@@ -16,19 +16,28 @@ if __name__ == "__main__":
         file_path = os.getcwd() + '\\' + args.sdf_in
         print("Input SDF file: " + file_path)
         file = open(file_path, 'rb')
-        a = [[0] * 128] * 128
-        plt.rcParams['axes.facecolor'] = 'blue'
-        plt.xlim(0, 128)
-        plt.ylim(0, 128)
-        start_depth = 0
-        file.seek(start_depth * 128 * 128 * 4)
-        for z in range(32):
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
+        ax.view_init(elev=30, azim=45, roll=0)
+        X = []
+        Y = []
+        Z = []
+        for z in range(0, 128):
+            X.clear()
+            Y.clear()
+            Z.clear()
             for y in range(128):
                 for x in range(128):
                     data = file.read(4)
                     dist = struct.unpack('f', data)[0]
-                    if x % 2 == 0 and y % 2 == 0 and dist <= 0:
-                        plt.plot(x, y, color='green', marker='o', markersize=3)
-            plt.savefig('out/sdf-' + str(start_depth + z) + '.png')
-            print('Done with z=' + str(start_depth + z))
+                    if x % 8 == 0 and y % 8 == 0 and z % 8 == 0 and dist <= 0:
+                        X.append(x)
+                        Y.append(y)
+                        Z.append(z)
+            ax.scatter(X, Z, Y, color='green', marker='o')
+            ax.set_xlim3d(0, 128)
+            ax.set_ylim3d(0, 128)
+            ax.set_zlim3d(0, 128)
+            plt.savefig('out/sdf.png')
+            print('Done with z=' + str(z))
         file.close()
