@@ -1,4 +1,5 @@
 import argparse
+import math
 import os
 import struct
 import matplotlib
@@ -46,10 +47,35 @@ if __name__ == "__main__":
             print('Done with z=' + str(z))
         file.close()
 
+    epsilon = 0.1
+    curv = []
     if args.derivative:
         print('=> Computing numerical derivative of samples...')
-        # TODO: compute first order derivative
-        # TODO: compute second order derivative
+        for z in range(128):
+            y_curv = []
+            for y in range(128):
+                x_curv = []
+                for x in range(128):
+                    x_l = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
+                    x_li = (x_l - samples[z][y][x]) / epsilon
+                    x_r = samples[z][y][x] if x + 1 >= 128 else samples[z][y][x + 1]
+                    x_ri = (x_r - samples[z][y][x]) / epsilon
+                    y_u = samples[z][y][x] if y - 1 < 0 else samples[z][y - 1][x]
+                    y_ui = (y_u - samples[z][y][x]) / epsilon
+                    y_d = samples[z][y][x] if y + 1 >= 128 else samples[z][y + 1][x]
+                    y_di = (y_d - samples[z][y][x]) / epsilon
+                    z_f = samples[z][y][x] if z - 1 < 0 else samples[z - 1][y][x]
+                    z_fi = (z_f - samples[z][y][x]) / epsilon
+                    z_b = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
+                    z_bi = (z_b - samples[z][y][x]) / epsilon
+                    x_dx = (x_ri - (2 * samples[z][y][x]) + x_li) / (epsilon ** 2)
+                    y_dy = (y_di - (2 * samples[z][y][x]) + y_ui) / (epsilon ** 2)
+                    z_dz = (z_bi - (2 * samples[z][y][x]) + z_fi) / (epsilon ** 2)
+                    mag = math.sqrt((x_dx ** 2) + (y_dy ** 2) + (z_dz ** 2))
+                    x_curv.append(mag)
+                y_curv.append(x_curv)
+            curv.append(y_curv)
+            print('Done with z=' + str(z))
 
     if args.matplot:
         matplotlib.use('TkAgg')
@@ -85,12 +111,15 @@ if __name__ == "__main__":
             for y in range(128):
                 for x in range(128):
                     if x % density == 0 and y % density == 0 and z % density == 0:
-                        if samples[z][y][x] <= 0:
+                        if len(curv) != 0 and curv[z][y][x] < 1:
                             arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
-                            arr_s.append((0, 1, 0, 1))
+                            arr_s.append((0, 0, 255, 255))
+                        elif samples[z][y][x] <= 0:
+                            arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
+                            arr_s.append((0, 255, 0, 255))
                         else:
                             arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
-                            arr_s.append((1, 0, 0, 0.01))
+                            arr_s.append((255, 0, 0, 1))
         point_cloud = np.array(arr)
         rgba = np.array(arr_s)
         pyvista.plot(point_cloud, scalars=rgba, render_points_as_spheres=True, point_size=point_size,
