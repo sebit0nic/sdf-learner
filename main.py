@@ -18,8 +18,7 @@ if __name__ == "__main__":
                         help='Calculate the derivative of the given SDF samples.')
     parser.add_argument('-m', '--matplot', action='store', const='NoValue', nargs='?',
                         help='Export graphics as matplotlib graph.')
-    parser.add_argument('-y', '--pyvista', action='store', const='NoValue', nargs='?',
-                        help='Export graphics as pyvista graph.')
+    parser.add_argument('-y', '--pyvista', help='Export graphics as pyvista graph.')
     args = parser.parse_args()
     density = 1
     point_size = 5
@@ -51,10 +50,9 @@ if __name__ == "__main__":
     curv = []
     if args.derivative:
         print('=> Computing numerical derivative of samples...')
+        # TODO: https://en.wikipedia.org/wiki/Curvature#Graph_of_a_function
         for z in range(128):
-            y_curv = []
             for y in range(128):
-                x_curv = []
                 for x in range(128):
                     x_l = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
                     x_li = (x_l - samples[z][y][x]) / epsilon
@@ -72,9 +70,7 @@ if __name__ == "__main__":
                     y_dy = (y_di - (2 * samples[z][y][x]) + y_ui) / (epsilon ** 2)
                     z_dz = (z_bi - (2 * samples[z][y][x]) + z_fi) / (epsilon ** 2)
                     mag = math.sqrt((x_dx ** 2) + (y_dy ** 2) + (z_dz ** 2))
-                    x_curv.append(mag)
-                y_curv.append(x_curv)
-            curv.append(y_curv)
+                    curv.append((x, y, z, mag))
             print('Done with z=' + str(z))
 
     if args.matplot:
@@ -103,24 +99,32 @@ if __name__ == "__main__":
             ax[i].set_zlim3d(0, 128)
         plt.savefig('out/sdf.png')
 
-    if args.pyvista:
-        arr = []
-        arr_s = []
+    if args.pyvista is not None:
+        arr_out = []
+        arr_in = []
+        arr_curv = []
         print('=> Visualizing samples using pyvista...')
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
-                    if x % density == 0 and y % density == 0 and z % density == 0:
-                        if len(curv) != 0 and curv[z][y][x] < 1:
-                            arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
-                            arr_s.append((0, 0, 255, 255))
-                        elif samples[z][y][x] <= 0:
-                            arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
-                            arr_s.append((0, 255, 0, 255))
-                        else:
-                            arr.append((float(x * 0.1), float(y * 0.1), float(z * 0.1)))
-                            arr_s.append((255, 0, 0, 1))
-        point_cloud = np.array(arr)
-        rgba = np.array(arr_s)
-        pyvista.plot(point_cloud, scalars=rgba, render_points_as_spheres=True, point_size=point_size,
-                     show_scalar_bar=False, rgba=True)
+        curv.sort(key=lambda elem: elem[3])
+        target_points = int((float(args.pyvista) / 100.0) * (128 ** 3))
+        for i in range(len(curv)):
+            x = curv[i][0]
+            y = curv[i][1]
+            z = curv[i][2]
+            if i < target_points:
+                arr_curv.append((x * 0.1, y * 0.1, z * 0.1))
+            elif samples[z][y][x] <= 0:
+                arr_in.append((x * 0.1, y * 0.1, z * 0.1))
+            else:
+                arr_out.append((x * 0.1, y * 0.1, z * 0.1))
+        plotter = pyvista.Plotter()
+        if len(arr_out) != 0:
+            pc_out = np.array(arr_out)
+            plotter.add_mesh(pc_out, color='red', point_size=point_size, render_points_as_spheres=True, opacity=0.005)
+        if len(arr_in) != 0:
+            pc_in = np.array(arr_in)
+            plotter.add_mesh(pc_in, color='green', point_size=point_size, render_points_as_spheres=True, opacity=1)
+        if len(arr_curv) != 0:
+            pc_curv = np.array(arr_curv)
+            plotter.add_mesh(pc_curv, color='blue', point_size=point_size, render_points_as_spheres=True, opacity=1)
+        plotter.show_axes()
+        plotter.show()
