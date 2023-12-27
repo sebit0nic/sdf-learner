@@ -2,8 +2,6 @@ import argparse
 import math
 import os
 import struct
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import pyvista
 
@@ -11,14 +9,14 @@ if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the estimated curvature of a signed distance field.')
-    parser.add_argument('-s', '--sdf_in', help='Binary file that contains a signed distance field learned manually.')
+    parser.add_argument('-i', '--sdf_in', help='Binary file that contains a signed distance field learned manually.')
     parser.add_argument('-d', '--density', help='Density of sampled points when SDF is exported.')
-    parser.add_argument('-p', '--point_size', help='Point size of sampled points when SDF is exported.')
+    parser.add_argument('-s', '--point_size', help='Point size of sampled points when SDF is exported.')
     parser.add_argument('-e', '--derivative', action='store', const='NoValue', nargs='?',
                         help='Calculate the derivative of the given SDF samples.')
     parser.add_argument('-m', '--matplot', action='store', const='NoValue', nargs='?',
                         help='Export graphics as matplotlib graph.')
-    parser.add_argument('-y', '--pyvista', help='Export graphics as pyvista graph.')
+    parser.add_argument('-p', '--pyvista', help='Export graphics as pyvista graph.')
     args = parser.parse_args()
     density = 1
     point_size = 5
@@ -50,7 +48,6 @@ if __name__ == "__main__":
     curv = []
     if args.derivative:
         print('=> Computing numerical derivative of samples...')
-        # TODO: https://en.wikipedia.org/wiki/Curvature#Graph_of_a_function
         for z in range(128):
             for y in range(128):
                 for x in range(128):
@@ -66,38 +63,17 @@ if __name__ == "__main__":
                     z_fi = (z_f - samples[z][y][x]) / epsilon
                     z_b = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
                     z_bi = (z_b - samples[z][y][x]) / epsilon
-                    x_dx = (x_ri - (2 * samples[z][y][x]) + x_li) / (epsilon ** 2)
-                    y_dy = (y_di - (2 * samples[z][y][x]) + y_ui) / (epsilon ** 2)
-                    z_dz = (z_bi - (2 * samples[z][y][x]) + z_fi) / (epsilon ** 2)
-                    mag = math.sqrt((x_dx ** 2) + (y_dy ** 2) + (z_dz ** 2))
-                    curv.append((x, y, z, mag))
+                    x_dx = (x_ri - x_li) / (2 * epsilon)
+                    y_dy = (y_di - y_ui) / (2 * epsilon)
+                    z_dz = (z_bi - z_fi) / (2 * epsilon)
+                    x_dx2 = (x_ri - (2 * samples[z][y][x]) + x_li) / (epsilon ** 2)
+                    y_dy2 = (y_di - (2 * samples[z][y][x]) + y_ui) / (epsilon ** 2)
+                    z_dz2 = (z_bi - (2 * samples[z][y][x]) + z_fi) / (epsilon ** 2)
+                    curvature = (math.sqrt((z_dz2 * y_dy - y_dy2 * z_dz) ** 2 + (x_dx2 * z_dz - z_dz2 * x_dx) ** 2 +
+                                           (y_dy2 * x_dx - x_dx2 * y_dy) ** 2)) / (math.sqrt(x_dx ** 2 + y_dy ** 2 +
+                                                                                   z_dz ** 2)) ** 3
+                    curv.append((x, y, z, curvature))
             print('Done with z=' + str(z))
-
-    if args.matplot:
-        matplotlib.use('TkAgg')
-        X = []
-        Y = []
-        Z = []
-        print('=> Visualizing samples using matplotlib...')
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
-                    if x % density == 0 and y % density == 0 and z % density == 0:
-                        if samples[z][y][x] <= 0:
-                            X.append(x)
-                            Y.append(y)
-                            Z.append(z)
-        fig, ax = plt.subplots(1, 3, figsize=(15, 5), subplot_kw=dict(projection='3d'))
-        for i in range(3):
-            ax[i].view_init(elev=30, azim=i * 45, roll=0)
-            ax[i].set_xlabel('x')
-            ax[i].set_ylabel('y')
-            ax[i].set_zlabel('z')
-            ax[i].scatter(X, Y, Z, color='green', marker='o')
-            ax[i].set_xlim3d(0, 128)
-            ax[i].set_ylim3d(0, 128)
-            ax[i].set_zlim3d(0, 128)
-        plt.savefig('out/sdf.png')
 
     if args.pyvista is not None:
         arr_out = []
