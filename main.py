@@ -51,24 +51,29 @@ if __name__ == "__main__":
         for z in range(128):
             for y in range(128):
                 for x in range(128):
-                    x_l = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
-                    x_li = (x_l - samples[z][y][x]) / epsilon
-                    x_r = samples[z][y][x] if x + 1 >= 128 else samples[z][y][x + 1]
-                    x_ri = (x_r - samples[z][y][x]) / epsilon
-                    y_u = samples[z][y][x] if y - 1 < 0 else samples[z][y - 1][x]
-                    y_ui = (y_u - samples[z][y][x]) / epsilon
-                    y_d = samples[z][y][x] if y + 1 >= 128 else samples[z][y + 1][x]
-                    y_di = (y_d - samples[z][y][x]) / epsilon
-                    z_f = samples[z][y][x] if z - 1 < 0 else samples[z - 1][y][x]
-                    z_fi = (z_f - samples[z][y][x]) / epsilon
-                    z_b = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
-                    z_bi = (z_b - samples[z][y][x]) / epsilon
-                    x_dx = (x_ri - x_li) / (2 * epsilon)
-                    y_dy = (y_di - y_ui) / (2 * epsilon)
-                    z_dz = (z_bi - z_fi) / (2 * epsilon)
-                    x_dx2 = (x_ri - (2 * samples[z][y][x]) + x_li) / (epsilon ** 2)
-                    y_dy2 = (y_di - (2 * samples[z][y][x]) + y_ui) / (epsilon ** 2)
-                    z_dz2 = (z_bi - (2 * samples[z][y][x]) + z_fi) / (epsilon ** 2)
+                    # Central difference of x
+                    x_neg = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
+                    x_neg_i = (x_neg - samples[z][y][x]) / epsilon
+                    x_pos = samples[z][y][x] if x + 1 >= 128 else samples[z][y][x + 1]
+                    x_pos_i = (x_pos - samples[z][y][x]) / epsilon
+                    # Central difference of y
+                    y_neg = samples[z][y][x] if y - 1 < 0 else samples[z][y - 1][x]
+                    y_neg_i = (y_neg - samples[z][y][x]) / epsilon
+                    y_pos = samples[z][y][x] if y + 1 >= 128 else samples[z][y + 1][x]
+                    y_pos_i = (y_pos - samples[z][y][x]) / epsilon
+                    # Central difference of z
+                    z_neg = samples[z][y][x] if z - 1 < 0 else samples[z - 1][y][x]
+                    z_neg_i = (z_neg - samples[z][y][x]) / epsilon
+                    z_pos = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
+                    z_pos_i = (z_pos - samples[z][y][x]) / epsilon
+                    # First order derivative
+                    x_dx = (x_pos_i - x_neg_i) / (2 * epsilon)
+                    y_dy = (y_pos_i - y_neg_i) / (2 * epsilon)
+                    z_dz = (z_pos_i - z_neg_i) / (2 * epsilon)
+                    # Second order derivative
+                    x_dx2 = (x_pos_i - (2 * samples[z][y][x]) + x_neg_i) / (epsilon ** 2)
+                    y_dy2 = (y_pos_i - (2 * samples[z][y][x]) + y_neg_i) / (epsilon ** 2)
+                    z_dz2 = (z_pos_i - (2 * samples[z][y][x]) + z_neg_i) / (epsilon ** 2)
                     curvature = (math.sqrt((z_dz2 * y_dy - y_dy2 * z_dz) ** 2 + (x_dx2 * z_dz - z_dz2 * x_dx) ** 2 +
                                            (y_dy2 * x_dx - x_dx2 * y_dy) ** 2)) / (math.sqrt(x_dx ** 2 + y_dy ** 2 +
                                                                                    z_dz ** 2)) ** 3
@@ -87,15 +92,15 @@ if __name__ == "__main__":
             y = curv[i][1]
             z = curv[i][2]
             if i < target_points:
-                arr_curv.append((x * 0.1, y * 0.1, z * 0.1))
+                arr_curv.append((float(x), float(y), float(z)))
             elif samples[z][y][x] <= 0:
-                arr_in.append((x * 0.1, y * 0.1, z * 0.1))
+                arr_in.append((float(x), float(y), float(z)))
             else:
-                arr_out.append((x * 0.1, y * 0.1, z * 0.1))
+                arr_out.append((float(x), float(y), float(z)))
         plotter = pyvista.Plotter()
-        if len(arr_out) != 0:
-            pc_out = np.array(arr_out)
-            plotter.add_mesh(pc_out, color='red', point_size=point_size, render_points_as_spheres=True, opacity=0.005)
+        # if len(arr_out) != 0:
+        #     pc_out = np.array(arr_out)
+        #     plotter.add_mesh(pc_out, color='red', point_size=point_size, render_points_as_spheres=True, opacity=0.005)
         if len(arr_in) != 0:
             pc_in = np.array(arr_in)
             plotter.add_mesh(pc_in, color='green', point_size=point_size, render_points_as_spheres=True, opacity=1)
@@ -103,4 +108,6 @@ if __name__ == "__main__":
             pc_curv = np.array(arr_curv)
             plotter.add_mesh(pc_curv, color='blue', point_size=point_size, render_points_as_spheres=True, opacity=1)
         plotter.show_axes()
+        plotter.show_grid()
+        plotter.export_obj('out/sdf.obj')
         plotter.show()
