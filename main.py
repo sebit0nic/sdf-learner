@@ -53,19 +53,19 @@ if __name__ == "__main__":
                 for x in range(128):
                     # Central difference of x
                     x_neg = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
-                    x_neg_i = (x_neg - samples[z][y][x]) / epsilon
+                    x_neg_i = samples[z][y][x] + epsilon * (x_neg - samples[z][y][x])
                     x_pos = samples[z][y][x] if x + 1 >= 128 else samples[z][y][x + 1]
-                    x_pos_i = (x_pos - samples[z][y][x]) / epsilon
+                    x_pos_i = samples[z][y][x] + epsilon * (x_pos - samples[z][y][x])
                     # Central difference of y
                     y_neg = samples[z][y][x] if y - 1 < 0 else samples[z][y - 1][x]
-                    y_neg_i = (y_neg - samples[z][y][x]) / epsilon
+                    y_neg_i = samples[z][y][x] + epsilon * (y_neg - samples[z][y][x])
                     y_pos = samples[z][y][x] if y + 1 >= 128 else samples[z][y + 1][x]
-                    y_pos_i = (y_pos - samples[z][y][x]) / epsilon
+                    y_pos_i = samples[z][y][x] + epsilon * (y_pos - samples[z][y][x])
                     # Central difference of z
                     z_neg = samples[z][y][x] if z - 1 < 0 else samples[z - 1][y][x]
-                    z_neg_i = (z_neg - samples[z][y][x]) / epsilon
+                    z_neg_i = samples[z][y][x] + epsilon * (z_neg - samples[z][y][x])
                     z_pos = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
-                    z_pos_i = (z_pos - samples[z][y][x]) / epsilon
+                    z_pos_i = samples[z][y][x] + epsilon * (z_pos - samples[z][y][x])
                     # First order derivative
                     x_dx = (x_pos_i - x_neg_i) / (2 * epsilon)
                     y_dy = (y_pos_i - y_neg_i) / (2 * epsilon)
@@ -85,13 +85,14 @@ if __name__ == "__main__":
         arr_in = []
         arr_curv = []
         print('=> Visualizing samples using pyvista...')
-        curv.sort(key=lambda elem: elem[3])
+        curv.sort(key=lambda elem: elem[3], reverse=True)
         target_points = int((float(args.pyvista) / 100.0) * (128 ** 3))
         for i in range(len(curv)):
             x = curv[i][0]
             y = curv[i][1]
             z = curv[i][2]
             if i < target_points:
+                print(curv[i])
                 arr_curv.append((float(x), float(y), float(z)))
             elif samples[z][y][x] <= 0:
                 arr_in.append((float(x), float(y), float(z)))
