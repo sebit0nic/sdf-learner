@@ -4,6 +4,7 @@ import os
 import struct
 import numpy as np
 import pyvista
+import numpy
 
 if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
@@ -14,8 +15,6 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--point_size', help='Point size of sampled points when SDF is exported.')
     parser.add_argument('-e', '--derivative', action='store', const='NoValue', nargs='?',
                         help='Calculate the derivative of the given SDF samples.')
-    parser.add_argument('-m', '--matplot', action='store', const='NoValue', nargs='?',
-                        help='Export graphics as matplotlib graph.')
     parser.add_argument('-p', '--pyvista', help='Export graphics as pyvista graph.')
     args = parser.parse_args()
     density = 1
@@ -41,72 +40,89 @@ if __name__ == "__main__":
                     x_arr.append(dist)
                 y_arr.append(x_arr)
             samples.append(y_arr)
-            print('Done with z=' + str(z))
+            print('Done with reading in samples at layer z=' + str(z))
         file.close()
 
     epsilon = 0.1
     curv = []
+    minima = 0
+    maxima = 0
     if args.derivative:
-        print('=> Computing numerical derivative of samples...')
+        print('=> Computing numerical derivative and curvature of samples...')
         for z in range(128):
             for y in range(128):
                 for x in range(128):
-                    # Central difference of x
-                    x_neg = samples[z][y][x] if x - 1 < 0 else samples[z][y][x - 1]
-                    x_neg_i = samples[z][y][x] + epsilon * (x_neg - samples[z][y][x])
-                    x_pos = samples[z][y][x] if x + 1 >= 128 else samples[z][y][x + 1]
-                    x_pos_i = samples[z][y][x] + epsilon * (x_pos - samples[z][y][x])
-                    # Central difference of y
-                    y_neg = samples[z][y][x] if y - 1 < 0 else samples[z][y - 1][x]
-                    y_neg_i = samples[z][y][x] + epsilon * (y_neg - samples[z][y][x])
-                    y_pos = samples[z][y][x] if y + 1 >= 128 else samples[z][y + 1][x]
-                    y_pos_i = samples[z][y][x] + epsilon * (y_pos - samples[z][y][x])
-                    # Central difference of z
-                    z_neg = samples[z][y][x] if z - 1 < 0 else samples[z - 1][y][x]
-                    z_neg_i = samples[z][y][x] + epsilon * (z_neg - samples[z][y][x])
-                    z_pos = samples[z][y][x] if z + 1 >= 128 else samples[z + 1][y][x]
-                    z_pos_i = samples[z][y][x] + epsilon * (z_pos - samples[z][y][x])
-                    # First order derivative
-                    x_dx = (x_pos_i - x_neg_i) / (2 * epsilon)
-                    y_dy = (y_pos_i - y_neg_i) / (2 * epsilon)
-                    z_dz = (z_pos_i - z_neg_i) / (2 * epsilon)
+                    # TODO: handle this better
+                    if x - 1 < 0 or x + 1 >= 128 or y - 1 < 0 or y + 1 >= 128 or z - 1 < 0 or z + 1 >= 128:
+                        curv.append((x, y, z, 0))
+                        continue
+                    # Interpolate x
+                    x_neg_i = samples[z][y][x] + epsilon * (samples[z][y][x - 1] - samples[z][y][x])
+                    x_pos_i = samples[z][y][x] + epsilon * (samples[z][y][x + 1] - samples[z][y][x])
+                    xy_pos_i = samples[z][y][x] + epsilon * (samples[z][y + 1][x + 1] - samples[z][y][x])
+                    xy_neg_i = samples[z][y][x] + epsilon * (samples[z][y - 1][x - 1] - samples[z][y][x])
+                    # Interpolate y
+                    y_neg_i = samples[z][y][x] + epsilon * (samples[z][y - 1][x] - samples[z][y][x])
+                    y_pos_i = samples[z][y][x] + epsilon * (samples[z][y + 1][x] - samples[z][y][x])
+                    xz_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y][x + 1] - samples[z][y][x])
+                    xz_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y][x - 1] - samples[z][y][x])
+                    # Interpolate z
+                    z_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y][x] - samples[z][y][x])
+                    z_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y][x] - samples[z][y][x])
+                    yz_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y + 1][x] - samples[z][y][x])
+                    yz_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y - 1][x] - samples[z][y][x])
                     # Second order derivative
-                    x_dx2 = (x_pos_i - (2 * samples[z][y][x]) + x_neg_i) / (epsilon ** 2)
-                    y_dy2 = (y_pos_i - (2 * samples[z][y][x]) + y_neg_i) / (epsilon ** 2)
-                    z_dz2 = (z_pos_i - (2 * samples[z][y][x]) + z_neg_i) / (epsilon ** 2)
-                    curvature = (math.sqrt((z_dz2 * y_dy - y_dy2 * z_dz) ** 2 + (x_dx2 * z_dz - z_dz2 * x_dx) ** 2 +
-                                           (y_dy2 * x_dx - x_dx2 * y_dy) ** 2)) / (math.sqrt(x_dx ** 2 + y_dy ** 2 +
-                                                                                   z_dz ** 2)) ** 3
+                    f_dx2 = (x_pos_i - (2 * samples[z][y][x]) + x_neg_i) / (epsilon ** 2)
+                    f_dy2 = (y_pos_i - (2 * samples[z][y][x]) + y_neg_i) / (epsilon ** 2)
+                    f_dz2 = (z_pos_i - (2 * samples[z][y][x]) + z_neg_i) / (epsilon ** 2)
+                    f_dxy = ((xy_pos_i - x_pos_i - y_pos_i + 2 * samples[z][y][x] - x_neg_i - y_neg_i + xy_neg_i) /
+                             2 * (epsilon ** 2))
+                    f_dxz = ((xz_pos_i - x_pos_i - z_pos_i + 2 * samples[z][y][x] - x_neg_i - z_neg_i + xz_neg_i) /
+                             2 * (epsilon ** 2))
+                    f_dyz = ((yz_pos_i - y_pos_i - z_pos_i + 2 * samples[z][y][x] - y_neg_i - z_neg_i + yz_neg_i) /
+                             2 * (epsilon ** 2))
+                    # Curvature computation
+                    curvature = (f_dx2 * (f_dy2 * f_dz2 - f_dyz * f_dxz) - f_dxy * (f_dxy * f_dz2 - f_dyz * f_dxz) +
+                                 f_dxz * (f_dxy * f_dyz - f_dy2 * f_dxz))
+                    if curvature < minima:
+                        minima = curvature
+                    if curvature > maxima:
+                        maxima = curvature
                     curv.append((x, y, z, curvature))
-            print('Done with z=' + str(z))
+            print('Done with derivative at layer z=' + str(z))
+        print('Minimum curvature found: ' + str(minima))
+        print('Maximum curvature found: ' + str(maxima))
 
     if args.pyvista is not None:
-        arr_out = []
         arr_in = []
-        arr_curv = []
+        arr_curv_pos = []
+        arr_curv_neg = []
         print('=> Visualizing samples using pyvista...')
-        curv.sort(key=lambda elem: elem[3], reverse=True)
+        curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
         target_points = int((float(args.pyvista) / 100.0) * (128 ** 3))
+        cur_points = 0
         for i in range(len(curv)):
             x = curv[i][0]
             y = curv[i][1]
             z = curv[i][2]
-            if i < target_points:
-                print(curv[i])
-                arr_curv.append((float(x), float(y), float(z)))
+            if cur_points < target_points and samples[z][y][x] <= 0:
+                if curv[i][3] < 0:
+                    arr_curv_neg.append((float(x), float(y), float(z)))
+                else:
+                    arr_curv_pos.append((float(x), float(y), float(z)))
+                cur_points += 1
             elif samples[z][y][x] <= 0:
                 arr_in.append((float(x), float(y), float(z)))
-            else:
-                arr_out.append((float(x), float(y), float(z)))
         plotter = pyvista.Plotter()
-        # if len(arr_out) != 0:
-        #     pc_out = np.array(arr_out)
-        #     plotter.add_mesh(pc_out, color='red', point_size=point_size, render_points_as_spheres=True, opacity=0.005)
+        plotter.add_mesh(pyvista.Box(bounds=(0.0, 128.0, 0.0, 128.0, 0.0, 128.0)), color='red', opacity=0.01)
         if len(arr_in) != 0:
             pc_in = np.array(arr_in)
             plotter.add_mesh(pc_in, color='green', point_size=point_size, render_points_as_spheres=True, opacity=1)
-        if len(arr_curv) != 0:
-            pc_curv = np.array(arr_curv)
+        if len(arr_curv_pos) != 0:
+            pc_curv = np.array(arr_curv_pos)
+            plotter.add_mesh(pc_curv, color='yellow', point_size=point_size, render_points_as_spheres=True, opacity=1)
+        if len(arr_curv_neg) != 0:
+            pc_curv = np.array(arr_curv_neg)
             plotter.add_mesh(pc_curv, color='blue', point_size=point_size, render_points_as_spheres=True, opacity=1)
         plotter.show_axes()
         plotter.show_grid()
