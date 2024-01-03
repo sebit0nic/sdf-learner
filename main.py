@@ -1,28 +1,26 @@
 import argparse
-import math
 import os
 import struct
 import numpy as np
 import pyvista
-import numpy
 
 if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the estimated curvature of a signed distance field.')
     parser.add_argument('-i', '--sdf_in', help='Binary file that contains a signed distance field learned manually.')
-    parser.add_argument('-d', '--density', help='Density of sampled points when SDF is exported.')
     parser.add_argument('-s', '--point_size', help='Point size of sampled points when SDF is exported.')
-    parser.add_argument('-e', '--derivative', action='store', const='NoValue', nargs='?',
-                        help='Calculate the derivative of the given SDF samples.')
+    parser.add_argument('-t', '--tolerance', help='Tolerance of the SDF distance values.')
+    parser.add_argument('-c', '--curvature', action='store', const='NoValue', nargs='?',
+                        help='Calculate the derivative and curvature of the given SDF samples.')
     parser.add_argument('-p', '--pyvista', help='Export graphics as pyvista graph.')
     args = parser.parse_args()
-    density = 1
     point_size = 5
-    if args.density is not None:
-        density = int(args.density)
+    tolerance = 0.1
     if args.point_size is not None:
         point_size = float(args.point_size)
+    if args.tolerance is not None:
+        tolerance = float(args.tolerance)
 
     samples = []
     print('=> Reading in samples...')
@@ -47,7 +45,7 @@ if __name__ == "__main__":
     curv = []
     minima = 0
     maxima = 0
-    if args.derivative:
+    if args.curvature:
         print('=> Computing numerical derivative and curvature of samples...')
         for z in range(128):
             for y in range(128):
@@ -92,20 +90,27 @@ if __name__ == "__main__":
             print('Done with derivative at layer z=' + str(z))
         print('Minimum curvature found: ' + str(minima))
         print('Maximum curvature found: ' + str(maxima))
+    else:
+        for z in range(128):
+            for y in range(128):
+                for x in range(128):
+                    curv.append((x, y, z, 0))
 
     if args.pyvista is not None:
         arr_in = []
         arr_curv_pos = []
         arr_curv_neg = []
         print('=> Visualizing samples using pyvista...')
-        curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
-        target_points = int((float(args.pyvista) / 100.0) * (128 ** 3))
+        target_points = 0
+        if args.curvature:
+            curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
+            target_points = int((float(args.pyvista) / 100.0) * (128 ** 3))
         cur_points = 0
         for i in range(len(curv)):
             x = curv[i][0]
             y = curv[i][1]
             z = curv[i][2]
-            if cur_points < target_points and samples[z][y][x] <= 0:
+            if cur_points < target_points and -tolerance <= samples[z][y][x] <= 0:
                 if curv[i][3] < 0:
                     arr_curv_neg.append((float(x), float(y), float(z)))
                 else:
