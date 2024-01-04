@@ -73,6 +73,10 @@ if __name__ == "__main__":
                     if x - 1 < 0 or x + 1 >= 128 or y - 1 < 0 or y + 1 >= 128 or z - 1 < 0 or z + 1 >= 128:
                         curv.append((x, y, z, 0))
                         continue
+                    # Disregard points being nowhere near the surface
+                    if -tolerance < samples[z][y][x] or samples[z][y][x] > tolerance:
+                        curv.append((x, y, z, 0))
+                        continue
                     # Interpolate x
                     x_neg_i = samples[z][y][x] + epsilon * (samples[z][y][x - 1] - samples[z][y][x])
                     x_pos_i = samples[z][y][x] + epsilon * (samples[z][y][x + 1] - samples[z][y][x])
@@ -129,12 +133,13 @@ if __name__ == "__main__":
             target_points = int((float(percentage) / 100.0) * (128 ** 3))
         cur_points = 0
         print('=> Visualizing samples using pyvista...')
-        print('   Progress: ' + 100 * '.', end='')
+        # print('   Progress: ' + 100 * '.', end='')
         for i in range(len(curv)):
             x = curv[i][0]
             y = curv[i][1]
             z = curv[i][2]
-            if cur_points < target_points and -tolerance <= samples[z][y][x] <= 0:
+            if cur_points < target_points:
+                print(curv[i])
                 if curv[i][3] < 0:
                     arr_curv_neg.append((float(x), float(y), float(z)))
                 else:
@@ -142,9 +147,9 @@ if __name__ == "__main__":
                 cur_points += 1
             elif samples[z][y][x] <= 0:
                 arr_in.append((float(x), float(y), float(z)))
-            if i % 32 == 0:
-                print('\r   Progress: ' + (int((i / len(curv)) * 100) * '#') +
-                      ((100 - int((i / len(curv)) * 100)) * '.'), end='', flush=True)
+            # if i % 32 == 0:
+                # print('\r   Progress: ' + (int((i / len(curv)) * 100) * '#') +
+                #      ((100 - int((i / len(curv)) * 100)) * '.'), end='', flush=True)
         print('')
         plotter = pyvista.Plotter()
         plotter.add_mesh(pyvista.Box(bounds=(0.0, 128.0, 0.0, 128.0, 0.0, 128.0)), color='red', opacity=0.01)
