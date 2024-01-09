@@ -10,6 +10,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the curvature of a signed distance field.')
     parser.add_argument('-i', '--sdf_in', help='Binary file that contains a signed distance field.')
+    parser.add_argument('-o', '--sdf_out', help='File where estimated points of high curvature are written to.')
     parser.add_argument('-s', '--point_size', help='Point size of sampled points when SDF is exported.')
     parser.add_argument('-t', '--tolerance', help='Tolerance of the SDF distance values.')
     parser.add_argument('-r', '--percentage', help='Percentage of points considered for curvature estimation.')
@@ -30,6 +31,7 @@ if __name__ == "__main__":
         percentage = float(args.percentage)
     print('=> Parameters:')
     print('   SDF input file:      ' + str(args.sdf_in))
+    print('   SDF output file:     ' + str(args.sdf_out))
     print('   Point size:          ' + str(point_size))
     print('   Tolerance:           ' + str(tolerance))
     print('   Percentage:          ' + str(percentage))
@@ -60,6 +62,7 @@ if __name__ == "__main__":
     print('\n')
 
     curv = []
+    target_points = 0
     if args.curvature:
         print('=> Computing numerical derivative and curvature of samples...')
         epsilon = 0.1
@@ -74,7 +77,7 @@ if __name__ == "__main__":
                         curv.append((x, y, z, 0))
                         continue
                     # Disregard points being nowhere near the surface
-                    if -tolerance < samples[z][y][x] or samples[z][y][x] > tolerance:
+                    if samples[z][y][x] < -tolerance or samples[z][y][x] > tolerance:
                         curv.append((x, y, z, 0))
                         continue
                     # Interpolate x
@@ -116,30 +119,37 @@ if __name__ == "__main__":
         print('   Minimum curvature found: ' + str(minima))
         print('   Maximum curvature found: ' + str(maxima))
         print('')
+        print('=> Sorting curvature of samples...\n')
+        curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
+        target_points = int((float(percentage) / 100.0) * (128 ** 3))
     else:
         for z in range(128):
             for y in range(128):
                 for x in range(128):
                     curv.append((x, y, z, 0))
 
+    if args.sdf_out is not None:
+        file_path = os.getcwd() + '\\' + args.sdf_out
+        file = open(file_path, 'wt')
+        # TODO: write out for each X,Y,Z point if interesting or not (curvature not relevant)
+        file.write('X,Y,Z,Curvature\n')
+        print('=> Writing high estimated curvature sample points to file...\n')
+        for i in range(target_points):
+            file.write(str(curv[i][0]) + ',' + str(curv[i][1]) + ',' + str(curv[i][2]) + ',' + str(curv[i][3]) + '\n')
+        file.close()
+
     if args.pyvista:
         arr_in = []
         arr_curv_pos = []
         arr_curv_neg = []
-        target_points = 0
-        if args.curvature:
-            print('=> Sorting curvature of samples...\n')
-            curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
-            target_points = int((float(percentage) / 100.0) * (128 ** 3))
         cur_points = 0
-        print('=> Visualizing samples using pyvista...')
-        # print('   Progress: ' + 100 * '.', end='')
+        print('=> Visualizing sample points using pyvista...')
+        print('   Progress: ' + 100 * '.', end='')
         for i in range(len(curv)):
             x = curv[i][0]
             y = curv[i][1]
             z = curv[i][2]
             if cur_points < target_points:
-                print(curv[i])
                 if curv[i][3] < 0:
                     arr_curv_neg.append((float(x), float(y), float(z)))
                 else:
@@ -147,9 +157,9 @@ if __name__ == "__main__":
                 cur_points += 1
             elif samples[z][y][x] <= 0:
                 arr_in.append((float(x), float(y), float(z)))
-            # if i % 32 == 0:
-                # print('\r   Progress: ' + (int((i / len(curv)) * 100) * '#') +
-                #      ((100 - int((i / len(curv)) * 100)) * '.'), end='', flush=True)
+            if i % 32 == 0:
+                print('\r   Progress: ' + (int((i / len(curv)) * 100) * '#') +
+                      ((100 - int((i / len(curv)) * 100)) * '.'), end='', flush=True)
         print('')
         plotter = pyvista.Plotter()
         plotter.add_mesh(pyvista.Box(bounds=(0.0, 128.0, 0.0, 128.0, 0.0, 128.0)), color='red', opacity=0.01)
