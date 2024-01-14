@@ -5,6 +5,14 @@ import numpy as np
 import pyvista
 import time
 
+
+class Sample:
+    def __init__(self, distance):
+        self.distance = distance
+        self.curvature = 0.0
+        self.high_curvature = False
+
+
 if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
@@ -53,7 +61,7 @@ if __name__ == "__main__":
                 for x in range(128):
                     data = file.read(4)
                     dist = struct.unpack('f', data)[0]
-                    x_arr.append(dist)
+                    x_arr.append(Sample(dist))
                 y_arr.append(x_arr)
             samples.append(y_arr)
             print('\r   Progress: ' + (int((z / 127) * 100) * '#') + (100 - int((z / 127) * 100)) * '.',
@@ -61,7 +69,7 @@ if __name__ == "__main__":
         file.close()
     print('\n')
 
-    curv = []
+    sorted_samples = []
     target_points = 0
     if args.curvature:
         print('=> Computing numerical derivative and curvature of samples...')
@@ -74,37 +82,51 @@ if __name__ == "__main__":
                 for x in range(128):
                     # Disregard points on the borders
                     if x - 1 < 0 or x + 1 >= 128 or y - 1 < 0 or y + 1 >= 128 or z - 1 < 0 or z + 1 >= 128:
-                        curv.append((x, y, z, 0))
+                        sorted_samples.append((z, y, x, 0.0))
+                        samples[z][y][x].curvature = 0.0
                         continue
                     # Disregard points being nowhere near the surface
-                    if samples[z][y][x] < -tolerance or samples[z][y][x] > tolerance:
-                        curv.append((x, y, z, 0))
+                    if samples[z][y][x].distance < -tolerance or samples[z][y][x].distance > tolerance:
+                        sorted_samples.append((z, y, x, 0.0))
+                        samples[z][y][x].curvature = 0.0
                         continue
                     # Interpolate x
-                    x_neg_i = samples[z][y][x] + epsilon * (samples[z][y][x - 1] - samples[z][y][x])
-                    x_pos_i = samples[z][y][x] + epsilon * (samples[z][y][x + 1] - samples[z][y][x])
-                    xy_pos_i = samples[z][y][x] + epsilon * (samples[z][y + 1][x + 1] - samples[z][y][x])
-                    xy_neg_i = samples[z][y][x] + epsilon * (samples[z][y - 1][x - 1] - samples[z][y][x])
+                    x_neg_i = samples[z][y][x].distance + epsilon * (samples[z][y][x - 1].distance -
+                                                                     samples[z][y][x].distance)
+                    x_pos_i = samples[z][y][x].distance + epsilon * (samples[z][y][x + 1].distance -
+                                                                     samples[z][y][x].distance)
+                    xy_pos_i = samples[z][y][x].distance + epsilon * (samples[z][y + 1][x + 1].distance -
+                                                                      samples[z][y][x].distance)
+                    xy_neg_i = samples[z][y][x].distance + epsilon * (samples[z][y - 1][x - 1].distance -
+                                                                      samples[z][y][x].distance)
                     # Interpolate y
-                    y_neg_i = samples[z][y][x] + epsilon * (samples[z][y - 1][x] - samples[z][y][x])
-                    y_pos_i = samples[z][y][x] + epsilon * (samples[z][y + 1][x] - samples[z][y][x])
-                    yz_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y + 1][x] - samples[z][y][x])
-                    yz_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y - 1][x] - samples[z][y][x])
+                    y_neg_i = samples[z][y][x].distance + epsilon * (samples[z][y - 1][x].distance -
+                                                                     samples[z][y][x].distance)
+                    y_pos_i = samples[z][y][x].distance + epsilon * (samples[z][y + 1][x].distance -
+                                                                     samples[z][y][x].distance)
+                    yz_pos_i = samples[z][y][x].distance + epsilon * (samples[z + 1][y + 1][x].distance -
+                                                                      samples[z][y][x].distance)
+                    yz_neg_i = samples[z][y][x].distance + epsilon * (samples[z - 1][y - 1][x].distance -
+                                                                      samples[z][y][x].distance)
                     # Interpolate z
-                    z_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y][x] - samples[z][y][x])
-                    z_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y][x] - samples[z][y][x])
-                    xz_pos_i = samples[z][y][x] + epsilon * (samples[z + 1][y][x + 1] - samples[z][y][x])
-                    xz_neg_i = samples[z][y][x] + epsilon * (samples[z - 1][y][x - 1] - samples[z][y][x])
+                    z_neg_i = samples[z][y][x].distance + epsilon * (samples[z - 1][y][x].distance -
+                                                                     samples[z][y][x].distance)
+                    z_pos_i = samples[z][y][x].distance + epsilon * (samples[z + 1][y][x].distance -
+                                                                     samples[z][y][x].distance)
+                    xz_pos_i = samples[z][y][x].distance + epsilon * (samples[z + 1][y][x + 1].distance -
+                                                                      samples[z][y][x].distance)
+                    xz_neg_i = samples[z][y][x].distance + epsilon * (samples[z - 1][y][x - 1].distance -
+                                                                      samples[z][y][x].distance)
                     # Second order derivative
-                    f_dx2 = (x_pos_i - (2 * samples[z][y][x]) + x_neg_i) / (epsilon ** 2)
-                    f_dy2 = (y_pos_i - (2 * samples[z][y][x]) + y_neg_i) / (epsilon ** 2)
-                    f_dz2 = (z_pos_i - (2 * samples[z][y][x]) + z_neg_i) / (epsilon ** 2)
-                    f_dxy = ((xy_pos_i - x_pos_i - y_pos_i + 2 * samples[z][y][x] - x_neg_i - y_neg_i + xy_neg_i) /
-                             2 * (epsilon ** 2))
-                    f_dxz = ((xz_pos_i - x_pos_i - z_pos_i + 2 * samples[z][y][x] - x_neg_i - z_neg_i + xz_neg_i) /
-                             2 * (epsilon ** 2))
-                    f_dyz = ((yz_pos_i - y_pos_i - z_pos_i + 2 * samples[z][y][x] - y_neg_i - z_neg_i + yz_neg_i) /
-                             2 * (epsilon ** 2))
+                    f_dx2 = (x_pos_i - (2 * samples[z][y][x].distance) + x_neg_i) / (epsilon ** 2)
+                    f_dy2 = (y_pos_i - (2 * samples[z][y][x].distance) + y_neg_i) / (epsilon ** 2)
+                    f_dz2 = (z_pos_i - (2 * samples[z][y][x].distance) + z_neg_i) / (epsilon ** 2)
+                    f_dxy = ((xy_pos_i - x_pos_i - y_pos_i + 2 * samples[z][y][x].distance - x_neg_i - y_neg_i +
+                              xy_neg_i) / 2 * (epsilon ** 2))
+                    f_dxz = ((xz_pos_i - x_pos_i - z_pos_i + 2 * samples[z][y][x].distance - x_neg_i - z_neg_i +
+                              xz_neg_i) / 2 * (epsilon ** 2))
+                    f_dyz = ((yz_pos_i - y_pos_i - z_pos_i + 2 * samples[z][y][x].distance - y_neg_i - z_neg_i +
+                              yz_neg_i) / 2 * (epsilon ** 2))
                     # Curvature computation
                     curvature = (f_dx2 * (f_dy2 * f_dz2 - f_dyz * f_dxz) - f_dxy * (f_dxy * f_dz2 - f_dyz * f_dxz) +
                                  f_dxz * (f_dxy * f_dyz - f_dy2 * f_dxz))
@@ -112,30 +134,34 @@ if __name__ == "__main__":
                         minima = curvature
                     if curvature > maxima:
                         maxima = curvature
-                    curv.append((x, y, z, curvature))
+                    sorted_samples.append((z, y, x, curvature))
+                    samples[z][y][x].curvature = curvature
             print('\r   Progress: ' + (int((z / 127) * 100) * '#') + (100 - int((z / 127) * 100)) * '.',
                   end='', flush=True)
         print('')
         print('   Minimum curvature found: ' + str(minima))
         print('   Maximum curvature found: ' + str(maxima))
         print('')
+
         print('=> Sorting curvature of samples...\n')
-        curv.sort(key=lambda elem: abs(elem[3]), reverse=True)
+        sorted_samples.sort(key=lambda elem: abs(elem[3]), reverse=True)
         target_points = int((float(percentage) / 100.0) * (128 ** 3))
-    else:
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
-                    curv.append((x, y, z, 0))
+        for i in range(target_points):
+            z = sorted_samples[i][0]
+            y = sorted_samples[i][1]
+            x = sorted_samples[i][2]
+            samples[z][y][x].high_curvature = True
 
     if args.sdf_out is not None:
         file_path = os.getcwd() + '\\' + args.sdf_out
         file = open(file_path, 'wt')
-        # TODO: write out for each X,Y,Z point if interesting or not (curvature not relevant)
-        file.write('X,Y,Z,Curvature\n')
+        file.write('X,Y,Z\n')
         print('=> Writing high estimated curvature sample points to file...\n')
-        for i in range(target_points):
-            file.write(str(curv[i][0]) + ',' + str(curv[i][1]) + ',' + str(curv[i][2]) + ',' + str(curv[i][3]) + '\n')
+        for z in range(128):
+            for y in range(128):
+                for x in range(128):
+                    if samples[z][y][x].high_curvature:
+                        file.write(str(z) + ',' + str(y) + ',' + str(x) + '\n')
         file.close()
 
     if args.pyvista:
@@ -145,21 +171,18 @@ if __name__ == "__main__":
         cur_points = 0
         print('=> Visualizing sample points using pyvista...')
         print('   Progress: ' + 100 * '.', end='')
-        for i in range(len(curv)):
-            x = curv[i][0]
-            y = curv[i][1]
-            z = curv[i][2]
-            if cur_points < target_points:
-                if curv[i][3] < 0:
-                    arr_curv_neg.append((float(x), float(y), float(z)))
-                else:
-                    arr_curv_pos.append((float(x), float(y), float(z)))
-                cur_points += 1
-            elif samples[z][y][x] <= 0:
-                arr_in.append((float(x), float(y), float(z)))
-            if i % 32 == 0:
-                print('\r   Progress: ' + (int((i / len(curv)) * 100) * '#') +
-                      ((100 - int((i / len(curv)) * 100)) * '.'), end='', flush=True)
+        for z in range(128):
+            for y in range(128):
+                for x in range(128):
+                    if samples[z][y][x].high_curvature:
+                        if samples[z][y][x].curvature > 0:
+                            arr_curv_pos.append((float(x), float(y), float(z)))
+                        else:
+                            arr_curv_neg.append((float(x), float(y), float(z)))
+                    elif samples[z][y][x].distance <= 0:
+                        arr_in.append((float(x), float(y), float(z)))
+            print('\r   Progress: ' + (int((z / 127) * 100) * '#') + (100 - int((z / 127) * 100)) * '.',
+                  end='', flush=True)
         print('')
         plotter = pyvista.Plotter()
         plotter.add_mesh(pyvista.Box(bounds=(0.0, 128.0, 0.0, 128.0, 0.0, 128.0)), color='red', opacity=0.01)
