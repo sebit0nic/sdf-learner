@@ -1,4 +1,4 @@
-from SDFVisualizer import SDFVisualizer
+from SDFVisualizer import ProgressBar
 from Sample import Sample
 import os
 import struct
@@ -13,7 +13,7 @@ class SDFReader:
         samples = []
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
-        SDFVisualizer.init_progress_bar()
+        ProgressBar.init_progress_bar()
         for z in range(128):
             y_arr = []
             for y in range(128):
@@ -24,8 +24,8 @@ class SDFReader:
                     x_arr.append(Sample(dist))
                 y_arr.append(x_arr)
             samples.append(y_arr)
-            SDFVisualizer.update_progress_bar(z / 127)
-        SDFVisualizer.end_progress_bar()
+            ProgressBar.update_progress_bar(z / 127)
+        ProgressBar.end_progress_bar()
         print('')
         file.close()
         return samples
