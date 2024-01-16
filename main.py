@@ -1,16 +1,9 @@
+from SDFFileHandler import SDFReader
+from SDFFileHandler import SDFWriter
 import argparse
-import os
-import struct
 import numpy as np
 import pyvista
 import time
-
-
-class Sample:
-    def __init__(self, distance):
-        self.distance = distance
-        self.curvature = 0.0
-        self.high_curvature = False
 
 
 if __name__ == "__main__":
@@ -49,30 +42,14 @@ if __name__ == "__main__":
     print('')
 
     samples = []
-    print('=> Reading in samples...')
     if args.sdf_in is not None:
-        file_path = os.getcwd() + '\\' + args.sdf_in
-        file = open(file_path, 'rb')
-        print('   Progress: ' + 100 * '.', end='')
-        for z in range(128):
-            y_arr = []
-            for y in range(128):
-                x_arr = []
-                for x in range(128):
-                    data = file.read(4)
-                    dist = struct.unpack('f', data)[0]
-                    x_arr.append(Sample(dist))
-                y_arr.append(x_arr)
-            samples.append(y_arr)
-            print('\r   Progress: ' + (int((z / 127) * 100) * '#') + (100 - int((z / 127) * 100)) * '.',
-                  end='', flush=True)
-        file.close()
-    print('\n')
+        sdf_reader = SDFReader(args.sdf_in)
+        samples = sdf_reader.read_samples()
 
-    sorted_samples = []
-    target_points = 0
     if args.curvature:
         print('=> Computing numerical derivative and curvature of samples...')
+        sorted_samples = []
+        target_points = 0
         epsilon = 0.1
         minima = 0
         maxima = 0
@@ -153,16 +130,8 @@ if __name__ == "__main__":
             samples[z][y][x].high_curvature = True
 
     if args.sdf_out is not None:
-        file_path = os.getcwd() + '\\' + args.sdf_out
-        file = open(file_path, 'wt')
-        file.write('X,Y,Z\n')
-        print('=> Writing high estimated curvature sample points to file...\n')
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
-                    if samples[z][y][x].high_curvature:
-                        file.write(str(z) + ',' + str(y) + ',' + str(x) + '\n')
-        file.close()
+        sdf_writer = SDFWriter(args.sdf_out)
+        sdf_writer.write_samples(samples)
 
     if args.pyvista:
         arr_in = []
