@@ -53,5 +53,4 @@ class SDFVisualizer:
             plotter.add_mesh(pc_curv, color='b', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
         plotter.show_axes()
         plotter.show_grid()
-        plotter.export_obj('out/sdf.obj')
         plotter.show()
