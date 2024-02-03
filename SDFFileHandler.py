@@ -46,11 +46,12 @@ class SDFWriter:
     def write_samples(self, samples):
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'wt')
-        file.write('X,Y,Z\n')
         print('=> Writing high estimated curvature sample points to file...\n')
         for z in range(128):
             for y in range(128):
                 for x in range(128):
-                    if samples[z][y][x].high_curvature:
-                        file.write(str(z) + ',' + str(y) + ',' + str(x) + '\n')
+                    if x == 0 and y == 0 and z == 0:
+                        file.write(str(samples[z][y][x].high_curvature))
+                    else:
+                        file.write(';' + str(samples[z][y][x].high_curvature))
         file.close()

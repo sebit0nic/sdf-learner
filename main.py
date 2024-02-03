@@ -4,6 +4,7 @@ from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 import argparse
 import time
+import torch
 
 
 if __name__ == "__main__":
@@ -53,3 +54,6 @@ if __name__ == "__main__":
     if args.pyvista:
         sdf_visualizer = SDFVisualizer(point_size)
         sdf_visualizer.plot_samples(samples)
+
+    # in_tensor = torch.as_tensor(samples, device=torch.device('cuda'), dtype=float)
+    # print(in_tensor)

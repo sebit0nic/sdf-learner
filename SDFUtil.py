@@ -88,5 +88,5 @@ class SDFCurvature:
             z = sorted_samples[i][0]
             y = sorted_samples[i][1]
             x = sorted_samples[i][2]
-            samples[z][y][x].high_curvature = True
+            samples[z][y][x].high_curvature = 1
         return samples
