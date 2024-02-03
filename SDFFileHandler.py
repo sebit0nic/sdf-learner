@@ -8,6 +8,14 @@ class SDFReader:
     def __init__(self, file_name):
         self.file_name = file_name
 
+    def read_configuration(self):
+        print('=> Reading in configuration...')
+        file_path = os.getcwd() + '\\' + self.file_name
+        file = open(file_path, 'r')
+        line = file.readline()
+        args = line.split(';')
+        return int(args[0]), float(args[1]), float(args[2])
+
     def read_samples(self):
         print('=> Reading in samples...')
         samples = []
