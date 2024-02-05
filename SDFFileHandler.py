@@ -53,5 +53,5 @@ class SDFWriter:
                     if x == 0 and y == 0 and z == 0:
                         file.write(str(samples[z][y][x].high_curvature))
                     else:
-                        file.write(';' + str(samples[z][y][x].high_curvature))
+                        file.write(',' + str(samples[z][y][x].high_curvature))
         file.close()

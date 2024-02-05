@@ -5,6 +5,9 @@ from SDFVisualizer import SDFVisualizer
 import argparse
 import time
 import torch
+import struct
+import os
+import csv
 
 
 if __name__ == "__main__":
@@ -55,5 +58,20 @@ if __name__ == "__main__":
         sdf_visualizer = SDFVisualizer(point_size)
         sdf_visualizer.plot_samples(samples)
 
-    # in_tensor = torch.as_tensor(samples, device=torch.device('cuda'), dtype=float)
-    # print(in_tensor)
+    distances = []
+    file_path = os.getcwd() + '\\in\\1.bin'
+    file = open(file_path, 'rb')
+    for z in range(128):
+        for y in range(128):
+            for x in range(128):
+                data = file.read(4)
+                dist = struct.unpack('f', data)[0]
+                distances.append(dist)
+    file.close()
+    in_tensor = torch.as_tensor(distances, dtype=float, device='cpu')
+    print(in_tensor)
+
+    file = open(os.getcwd() + '\\out\\1.csv', 'r')
+    classification = list(map(int, list(csv.reader(file))[0]))
+    out_tensor = torch.as_tensor(classification, dtype=int, device='cpu')
+    print(out_tensor)
