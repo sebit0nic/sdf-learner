@@ -1,7 +1,8 @@
 from SDFVisualizer import ProgressBar
-from Sample import Sample
+from SDFSample import SDFSample
 import os
 import struct
+import csv
 
 
 class SDFReader:
@@ -28,8 +29,8 @@ class SDFReader:
                 x_arr = []
                 for x in range(128):
                     data = file.read(4)
-                    dist = struct.unpack('f', data)[0]
-                    x_arr.append(Sample(dist))
+                    distance = struct.unpack('f', data)[0]
+                    x_arr.append(SDFSample(distance))
                 y_arr.append(x_arr)
             samples.append(y_arr)
             ProgressBar.update_progress_bar(z / 127)
@@ -37,6 +38,25 @@ class SDFReader:
         print('')
         file.close()
         return samples
+
+    def read_samples_flat(self):
+        samples = []
+        file_path = os.getcwd() + '\\' + self.file_name
+        file = open(file_path, 'rb')
+        for z in range(128):
+            for y in range(128):
+                for x in range(128):
+                    data = file.read(4)
+                    distance = struct.unpack('f', data)[0]
+                    samples.append(distance)
+        file.close()
+        return samples
+
+    def read_labels(self):
+        file_path = os.getcwd() + '\\' + self.file_name
+        file = open(file_path, 'r')
+        labels = list(map(int, list(csv.reader(file))[0]))
+        return labels
 
 
 class SDFWriter:
