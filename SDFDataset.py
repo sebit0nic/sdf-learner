@@ -20,10 +20,10 @@ class SDFDataset(Dataset):
 
         in_reader = SDFReader(self.input_folder + str(item + 1) + '.bin')
         in_samples = in_reader.read_samples_flat()
-        in_tensor = torch.as_tensor(in_samples, dtype=float, device=device)
+        in_tensor = torch.as_tensor(in_samples, dtype=torch.float32, device=device)
 
         out_reader = SDFReader(self.output_folder + str(item + 1) + '.csv')
         out_labels = out_reader.read_labels()
-        out_tensor = torch.as_tensor(out_labels, dtype=int, device=device)
+        out_tensor = torch.as_tensor(out_labels, dtype=torch.float32, device=device)
 
         return in_tensor, out_tensor

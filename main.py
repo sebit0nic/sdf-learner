@@ -1,3 +1,7 @@
+import torch.utils.data
+from torch.utils.data import DataLoader
+from torch import nn
+
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
 from SDFUtil import SDFCurvature
@@ -5,6 +9,22 @@ from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
 import argparse
 import time
+
+
+class SDFNeuralNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(128 ** 3, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128 ** 3),
+        )
+
+    def forward(self, x):
+        logits = self.linear_relu_stack(x)
+        return logits
 
 
 if __name__ == "__main__":
@@ -17,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--curvature', action='store', const='Set', nargs='?',
                         help='Calculate the derivative and curvature of the given SDF samples.')
     parser.add_argument('-p', '--pyvista', action='store', const='Set', nargs='?',
-                        help='Export graphics as pyvista graph.')
+                        help='Show graphics as pyvista graph.')
     parser.add_argument('-t', '--train', action='store', const='Set', nargs='?',
                         help='Train the neural network using provided samples and labels.')
     args = parser.parse_args()
@@ -36,6 +56,7 @@ if __name__ == "__main__":
     print('   Percentage:          ' + str(percentage))
     print('   Calculate curvature: ' + str(args.curvature == 'Set'))
     print('   Show graph:          ' + str(args.pyvista == 'Set'))
+    print('   Train model:         ' + str(args.train == 'Set'))
     time.sleep(2)
     print('')
 
@@ -58,6 +79,39 @@ if __name__ == "__main__":
         sdf_visualizer.plot_samples(samples)
 
     if args.train:
-        dataset = SDFDataset('in\\', 'out\\')
-        for i in range(len(dataset)):
-            print(dataset[i])
+        full_dataset = SDFDataset('in\\', 'out\\')
+        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [2, 1])
+
+        train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
+        train_features, train_labels = next(iter(train_dataloader))
+        test_features, test_labels = next(iter(test_dataloader))
+        print(f"Feature batch shape: {train_features.size()}")
+        print(f"Labels batch shape: {train_labels.size()}")
+        print(f"Feature batch shape: {test_features.size()}")
+        print(f"Labels batch shape: {test_labels.size()}")
+
+        device = 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda'
+        model = SDFNeuralNetwork().to(device)
+
+        epochs = 5
+        optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+        loss_nll = nn.CrossEntropyLoss()
+        for t in range(epochs):
+            model.train()
+            for batch, (X, y) in enumerate(train_dataloader):
+                pred = model(X)
+                pred = nn.Softmax(dim=1)(pred)
+                loss = loss_nll(pred, y)
+                print(X)
+                print(pred)
+                print(y)
+
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+                loss = loss.item()
+                print(f"loss: {loss:>7f}")
