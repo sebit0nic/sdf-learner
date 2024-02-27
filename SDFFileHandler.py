@@ -3,6 +3,7 @@ from SDFSample import SDFSample
 import os
 import struct
 import csv
+import numpy as np
 
 
 class SDFReader:
@@ -39,8 +40,8 @@ class SDFReader:
         file.close()
         return samples
 
-    def read_samples_flat(self):
-        samples = []
+    def read_samples_distance(self):
+        samples = np.zeros((128, 128, 128))
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
         for z in range(128):
@@ -48,14 +49,21 @@ class SDFReader:
                 for x in range(128):
                     data = file.read(4)
                     distance = struct.unpack('f', data)[0]
-                    samples.append(distance)
+                    samples[z, y, x] = distance
         file.close()
         return samples
 
     def read_labels(self):
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'r')
-        labels = list(map(int, list(csv.reader(file))[0]))
+        labels_flat = list(map(int, list(csv.reader(file))[0]))
+        labels = np.zeros((128, 128, 128))
+        i = 0
+        for z in range(128):
+            for y in range(128):
+                for x in range(128):
+                    labels[z, y, x] = labels_flat[i]
+                    i += 0
         return labels
 
 

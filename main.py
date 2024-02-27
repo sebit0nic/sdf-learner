@@ -15,11 +15,13 @@ class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(128 ** 3, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128 ** 3),
+            # nn.Linear(128 ** 3, 128),
+            nn.Conv3d(2, 2, 3)
+            # nn.ReLU()
+            # nn.Linear(128, 128),
+            # nn.ReLU(),
+            # nn.Linear(128, 128 ** 3),
+            # nn.Softmax(dim=1)
         )
 
     def forward(self, x):
@@ -96,18 +98,14 @@ if __name__ == "__main__":
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
 
-        epochs = 5
-        optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+        epochs = 1
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
         loss_nll = nn.CrossEntropyLoss()
         for t in range(epochs):
             model.train()
             for batch, (X, y) in enumerate(train_dataloader):
                 pred = model(X)
-                pred = nn.Softmax(dim=1)(pred)
                 loss = loss_nll(pred, y)
-                print(X)
-                print(pred)
-                print(y)
 
                 loss.backward()
                 optimizer.step()
