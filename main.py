@@ -16,7 +16,9 @@ class SDFNeuralNetwork(nn.Module):
         super().__init__()
         self.linear_relu_stack = nn.Sequential(
             # nn.Linear(128 ** 3, 128),
-            nn.Conv3d(2, 2, 3)
+            nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=0),
+            nn.ReLU(),
+            nn.Flatten()
             # nn.ReLU()
             # nn.Linear(128, 128),
             # nn.ReLU(),
@@ -105,11 +107,13 @@ if __name__ == "__main__":
             model.train()
             for batch, (X, y) in enumerate(train_dataloader):
                 pred = model(X)
-                loss = loss_nll(pred, y)
+                y = torch.squeeze(y)
+                print(pred.size())
+                # loss = loss_nll(pred, y)
 
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+                # loss.backward()
+                # optimizer.step()
+                # optimizer.zero_grad()
 
-                loss = loss.item()
-                print(f"loss: {loss:>7f}")
+                # loss = loss.item()
+                # print(f"loss: {loss:>7f}")
