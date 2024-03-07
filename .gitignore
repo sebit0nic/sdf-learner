@@ -1,3 +1,5 @@
+conf/
+in/
 out/
 .idea/
 __pycache__/
