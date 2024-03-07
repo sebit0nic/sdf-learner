@@ -21,15 +21,15 @@ class SDFVisualizer:
     def __init__(self, point_size):
         self.point_size = point_size
 
-    def plot_samples(self, samples):
+    def plot_samples(self, samples, size):
         arr_in = []
         arr_curv_pos = []
         arr_curv_neg = []
         print('=> Visualizing sample points using pyvista...')
         print('   Progress: ' + 100 * '.', end='')
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
+        for z in range(size):
+            for y in range(size):
+                for x in range(size):
                     if samples[z][y][x].high_curvature:
                         if samples[z][y][x].curvature > 0:
                             arr_curv_pos.append((float(x), float(y), float(z)))
@@ -37,11 +37,11 @@ class SDFVisualizer:
                             arr_curv_neg.append((float(x), float(y), float(z)))
                     elif samples[z][y][x].distance <= 0:
                         arr_in.append((float(x), float(y), float(z)))
-            print('\r   Progress: ' + (int((z / 127) * 100) * '#') + (100 - int((z / 127) * 100)) * '.',
+            print('\r   Progress: ' + (int((z / (size - 1)) * 100) * '#') + (100 - int((z / (size - 1)) * 100)) * '.',
                   end='', flush=True)
         print('')
         plotter = pyvista.Plotter()
-        plotter.add_mesh(pyvista.Box(bounds=(0.0, 128.0, 0.0, 128.0, 0.0, 128.0)), color='red', opacity=0.01)
+        plotter.add_mesh(pyvista.Box(bounds=(0.0, size, 0.0, size, 0.0, size)), color='red', opacity=0.01)
         if len(arr_in) != 0:
             pc_in = np.array(arr_in)
             plotter.add_mesh(pc_in, color='g', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
