@@ -59,8 +59,8 @@ class SDFCurvature:
                             np.sign(dist) != np.sign(xz_pos_i) or np.sign(dist) != np.sign(xz_neg_i)):
                         diff_sign = True
 
-                    if not diff_sign:
-                        continue
+                    # if not diff_sign:
+                    #     continue
                     # Second order derivative
                     f_dx2 = (x_pos_i - (2 * samples[z][y][x].distance) + x_neg_i) / (self.epsilon ** 2)
                     f_dy2 = (y_pos_i - (2 * samples[z][y][x].distance) + y_neg_i) / (self.epsilon ** 2)
@@ -75,12 +75,11 @@ class SDFCurvature:
                     # Curvature computation
                     curvature = (f_dx2 * (f_dy2 * f_dz2 - f_dyz * f_dxz) - f_dxy * (f_dxy * f_dz2 - f_dyz * f_dxz) +
                                  f_dxz * (f_dxy * f_dyz - f_dy2 * f_dxz))
-                    # if np.abs(curvature) < min_curvature:
-                    #     continue
-                    if curvature < minima:
-                        minima = curvature
-                    if curvature > maxima:
-                        maxima = curvature
+
+                    if abs(curvature) < minima:
+                        minima = abs(curvature)
+                    if abs(curvature) > maxima:
+                        maxima = abs(curvature)
                     sorted_samples.append((z, y, x, curvature))
                     samples[z][y][x].curvature = curvature
             ProgressBar.update_progress_bar(z / (size - 1))
@@ -93,8 +92,13 @@ class SDFCurvature:
     def classify_samples(self, samples, sorted_samples):
         print('=> Sorting curvature of samples...\n')
         sorted_samples.sort(key=lambda elem: abs(elem[3]), reverse=True)
-        target_points = int((float(self.percentage) / 100.0) * (128 ** 3))
+        curv_list = [abs(elem[3]) for elem in sorted_samples]
+        s = np.array(curv_list)
+        p = np.percentile(s, np.array([25, 99, 99.5]))
+        print(p)
         for i in range(len(sorted_samples)):
+            if np.abs(sorted_samples[i][3]) < p[2]:
+                continue
             z = sorted_samples[i][0]
             y = sorted_samples[i][1]
             x = sorted_samples[i][2]
