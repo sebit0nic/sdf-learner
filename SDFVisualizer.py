@@ -21,21 +21,21 @@ class SDFVisualizer:
     def __init__(self, point_size):
         self.point_size = point_size
 
-    def plot_samples(self, samples, size):
+    def plot_points(self, points, size):
         arr_in = []
         arr_curv_pos = []
         arr_curv_neg = []
-        print('=> Visualizing sample points using pyvista...')
+        print('=> Visualizing points using pyvista...')
         print('   Progress: ' + 100 * '.', end='')
         for z in range(size):
             for y in range(size):
                 for x in range(size):
-                    if samples[z][y][x].high_curvature:
-                        if samples[z][y][x].curvature > 0:
+                    if points[z][y][x].high_curvature:
+                        if points[z][y][x].curvature > 0:
                             arr_curv_pos.append((float(x), float(y), float(z)))
                         else:
                             arr_curv_neg.append((float(x), float(y), float(z)))
-                    elif samples[z][y][x].distance <= 0:
+                    elif points[z][y][x].distance <= 0:
                         arr_in.append((float(x), float(y), float(z)))
             print('\r   Progress: ' + (int((z / (size - 1)) * 100) * '#') + (100 - int((z / (size - 1)) * 100)) * '.',
                   end='', flush=True)

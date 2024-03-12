@@ -1,5 +1,5 @@
 from SDFVisualizer import ProgressBar
-from SDFSample import SDFSample
+from SDFPoint import SDFPoint
 import os
 import struct
 import csv
@@ -18,9 +18,9 @@ class SDFReader:
         args = line.split(';')
         return int(args[0]), float(args[1]), float(args[2])
 
-    def read_samples(self):
-        print('=> Reading in samples...')
-        samples = []
+    def read_points(self):
+        print('=> Reading in points...')
+        points = []
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
         file.seek(0, os.SEEK_END)
@@ -34,17 +34,17 @@ class SDFReader:
                 for x in range(size):
                     data = file.read(4)
                     distance = struct.unpack('f', data)[0]
-                    x_arr.append(SDFSample(distance))
+                    x_arr.append(SDFPoint(distance))
                 y_arr.append(x_arr)
-            samples.append(y_arr)
+            points.append(y_arr)
             ProgressBar.update_progress_bar(z / (size - 1))
         ProgressBar.end_progress_bar()
         print('')
         file.close()
-        return samples, size
+        return points, size
 
-    def read_samples_distance(self):
-        samples = np.zeros((128, 128, 128))
+    def read_point_distances(self):
+        points = np.zeros((128, 128, 128))
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
         for z in range(128):
@@ -52,9 +52,9 @@ class SDFReader:
                 for x in range(128):
                     data = file.read(4)
                     distance = struct.unpack('f', data)[0]
-                    samples[z, y, x] = distance
+                    points[z, y, x] = distance
         file.close()
-        return samples
+        return points
 
     def read_labels(self):
         file_path = os.getcwd() + '\\' + self.file_name
@@ -71,18 +71,19 @@ class SDFReader:
 
 
 class SDFWriter:
-    def __init__(self, file_name):
+    def __init__(self, file_name, size):
         self.file_name = file_name
+        self.size = size
 
-    def write_samples(self, samples):
+    def write_points(self, points):
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'wt')
-        print('=> Writing high estimated curvature sample points to file...\n')
-        for z in range(128):
-            for y in range(128):
-                for x in range(128):
+        print('=> Writing high estimated curvature points to file...\n')
+        for z in range(self.size):
+            for y in range(self.size):
+                for x in range(self.size):
                     if x == 0 and y == 0 and z == 0:
-                        file.write(str(samples[z][y][x].high_curvature))
+                        file.write(str(points[z][y][x].high_curvature))
                     else:
-                        file.write(',' + str(samples[z][y][x].high_curvature))
+                        file.write(',' + str(points[z][y][x].high_curvature))
         file.close()

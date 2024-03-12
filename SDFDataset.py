@@ -19,7 +19,7 @@ class SDFDataset(Dataset):
             device = 'cuda'
 
         in_reader = SDFReader(self.input_folder + str(item + 1) + '.bin')
-        in_samples = in_reader.read_samples_distance()
+        in_samples = in_reader.read_point_distances()
         in_samples = in_samples.reshape((1, 128, 128, 128))
         in_tensor = torch.as_tensor(in_samples, dtype=torch.float32, device=device)
 

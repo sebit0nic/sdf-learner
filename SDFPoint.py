@@ -1,4 +1,4 @@
-class SDFSample:
+class SDFPoint:
     def __init__(self, distance):
         self.distance = distance
         self.curvature = 0.0
