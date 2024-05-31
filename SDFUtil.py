@@ -35,27 +35,27 @@ class SDFCurvature:
                     x_pos_i = dist + self.epsilon * (points[z][y][x + 1].distance - dist)
                     xy_pos_i = dist + self.epsilon * (points[z][y + 1][x + 1].distance - dist)
                     xy_neg_i = dist + self.epsilon * (points[z][y - 1][x - 1].distance - dist)
-                    if (np.sign(dist) != np.sign(x_neg_i) or np.sign(dist) != np.sign(x_pos_i) or
-                            np.sign(dist) != np.sign(xy_pos_i) or np.sign(dist) != np.sign(xy_neg_i)):
-                        diff_sign = True
+                    # if (np.sign(dist) != np.sign(x_neg_i) or np.sign(dist) != np.sign(x_pos_i) or
+                    #         np.sign(dist) != np.sign(xy_pos_i) or np.sign(dist) != np.sign(xy_neg_i)):
+                    #     diff_sign = True
 
                     # Interpolate y
                     y_neg_i = dist + self.epsilon * (points[z][y - 1][x].distance - dist)
                     y_pos_i = dist + self.epsilon * (points[z][y + 1][x].distance - dist)
                     yz_pos_i = dist + self.epsilon * (points[z + 1][y + 1][x].distance - dist)
                     yz_neg_i = dist + self.epsilon * (points[z - 1][y - 1][x].distance - dist)
-                    if (np.sign(dist) != np.sign(y_neg_i) or np.sign(dist) != np.sign(y_pos_i) or
-                            np.sign(dist) != np.sign(yz_pos_i) or np.sign(dist) != np.sign(yz_neg_i)):
-                        diff_sign = True
+                    # if (np.sign(dist) != np.sign(y_neg_i) or np.sign(dist) != np.sign(y_pos_i) or
+                    #         np.sign(dist) != np.sign(yz_pos_i) or np.sign(dist) != np.sign(yz_neg_i)):
+                    #     diff_sign = True
 
                     # Interpolate z
                     z_neg_i = dist + self.epsilon * (points[z - 1][y][x].distance - dist)
                     z_pos_i = dist + self.epsilon * (points[z + 1][y][x].distance - dist)
                     xz_pos_i = dist + self.epsilon * (points[z + 1][y][x + 1].distance - dist)
                     xz_neg_i = dist + self.epsilon * (points[z - 1][y][x - 1].distance - dist)
-                    if (np.sign(dist) != np.sign(z_neg_i) or np.sign(dist) != np.sign(z_pos_i) or
-                            np.sign(dist) != np.sign(xz_pos_i) or np.sign(dist) != np.sign(xz_neg_i)):
-                        diff_sign = True
+                    # if (np.sign(dist) != np.sign(z_neg_i) or np.sign(dist) != np.sign(z_pos_i) or
+                    #         np.sign(dist) != np.sign(xz_pos_i) or np.sign(dist) != np.sign(xz_neg_i)):
+                    #     diff_sign = True
 
                     # if not diff_sign:
                     #     continue
@@ -92,13 +92,12 @@ class SDFCurvature:
         sorted_points.sort(key=lambda elem: abs(elem[3]), reverse=True)
         curv_list = [abs(elem[3]) for elem in sorted_points]
         s = np.array(curv_list)
-        p = np.percentile(s, np.array([25, 99, 99.5]))
+        p = np.percentile(s, np.array([25, 98.5, 99]))
         print(p)
         for i in range(len(sorted_points)):
-            if np.abs(sorted_points[i][3]) < p[2]:
-                continue
-            z = sorted_points[i][0]
-            y = sorted_points[i][1]
-            x = sorted_points[i][2]
-            points[z][y][x].high_curvature = 1
+            if p[1] < np.abs(sorted_points[i][3]) < p[2]:
+                z = sorted_points[i][0]
+                y = sorted_points[i][1]
+                x = sorted_points[i][2]
+                points[z][y][x].high_curvature = 1
         return points
