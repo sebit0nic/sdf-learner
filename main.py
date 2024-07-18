@@ -14,17 +14,18 @@ import time
 class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
+        # TODO: try with deconvolutional layers?
         self.conv3d_stack = nn.Sequential(
-            # nn.Linear(128 ** 3, 128),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-            # nn.ReLU(),
-            # nn.Flatten()
-            # nn.ReLU()
-            # nn.Linear(128, 128),
-            # nn.ReLU(),
-            # nn.Linear(128, 128 ** 3),
-            # nn.Softmax(dim=1)
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Upsample(scale_factor=2, mode='trilinear'),
+            nn.Upsample(scale_factor=2, mode='trilinear'),
+            nn.Upsample(scale_factor=2, mode='trilinear'),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -128,6 +129,9 @@ if __name__ == "__main__":
                 pred = model(X)
                 # y = torch.squeeze(y)
                 print(pred.size())
+                print(pred.round())
+                print(pred.amax())
+                print(pred.amin())
                 # loss = loss_nll(pred, y)
 
                 # loss.backward()
