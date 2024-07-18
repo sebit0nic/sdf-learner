@@ -5,27 +5,23 @@ from torch.utils.data import Dataset
 
 
 class SDFDataset(Dataset):
-    def __init__(self, input_folder, output_folder):
+    def __init__(self, input_folder, output_folder, sample_num):
         self.input_folder = input_folder
         self.output_folder = output_folder
+        self.sample_num = sample_num
 
     def __len__(self):
-        files = os.listdir(os.getcwd() + '\\' + self.input_folder)
-        return len(files)
+        return self.sample_num
 
     def __getitem__(self, item):
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
 
-        in_reader = SDFReader(self.input_folder + str(item + 1) + '.bin')
-        in_samples = in_reader.read_point_distances()
-        in_samples = in_samples.reshape((1, 128, 128, 128))
-        in_tensor = torch.as_tensor(in_samples, dtype=torch.float32, device=device)
+        in_reader = SDFReader(f'{self.input_folder}sample{item:06d}_subdiv.bin')
+        in_tensor = in_reader.read_input_as_tensor(device)
 
-        out_reader = SDFReader(self.output_folder + str(item + 1) + '.csv')
-        out_labels = out_reader.read_labels()
-        out_labels = out_labels.reshape((1, 128, 128, 128))
-        out_tensor = torch.as_tensor(out_labels, dtype=torch.float32, device=device)
+        out_reader = SDFReader(f'{self.output_folder}sample{item:06d}.csv')
+        out_tensor = out_reader.read_labels_as_tensor(device)
 
         return in_tensor, out_tensor

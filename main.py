@@ -16,9 +16,10 @@ class SDFNeuralNetwork(nn.Module):
         super().__init__()
         self.conv3d_stack = nn.Sequential(
             # nn.Linear(128 ** 3, 128),
-            nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=0),
-            nn.ReLU(),
-            nn.Flatten()
+            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+            # nn.ReLU(),
+            # nn.Flatten()
             # nn.ReLU()
             # nn.Linear(128, 128),
             # nn.ReLU(),
@@ -101,8 +102,8 @@ if __name__ == "__main__":
         sdf_visualizer.plot_points(samples, size)
 
     if args.train:
-        full_dataset = SDFDataset('in\\', 'out\\')
-        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [2, 1])
+        full_dataset = SDFDataset('in\\', 'out\\', sample_num)
+        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [3, 2])
 
         train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
         test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
@@ -125,7 +126,7 @@ if __name__ == "__main__":
             model.train()
             for batch, (X, y) in enumerate(train_dataloader):
                 pred = model(X)
-                y = torch.squeeze(y)
+                # y = torch.squeeze(y)
                 print(pred.size())
                 # loss = loss_nll(pred, y)
 
