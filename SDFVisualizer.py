@@ -4,15 +4,21 @@ import pyvista
 
 class ProgressBar:
     @staticmethod
-    def init_progress_bar():
+    def init_progress_bar(debug):
+        if not debug:
+            return
         print('   Progress: ' + 100 * '.', end='')
 
     @staticmethod
-    def update_progress_bar(progress):
+    def update_progress_bar(debug, progress):
+        if not debug:
+            return
         print('\r   Progress: ' + (int(progress * 100) * '#') + (100 - int(progress * 100)) * '.', end='', flush=True)
 
     @staticmethod
-    def end_progress_bar():
+    def end_progress_bar(debug):
+        if not debug:
+            return
         print('\r   Progress: ' + 100 * '#', end='', flush=True)
         print('')
 

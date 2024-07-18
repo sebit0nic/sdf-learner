@@ -8,12 +8,13 @@ class SDFCurvature:
         self.tolerance = tolerance
         self.percentage = percentage
 
-    def calculate_curvature(self, points, size):
-        print('=> Computing numerical derivative and curvature of points...')
+    def calculate_curvature(self, points, size, debug=True):
+        if debug:
+            print('=> Computing numerical derivative and curvature of points...')
         sorted_points = []
         minima = 0
         maxima = 0
-        ProgressBar.init_progress_bar()
+        ProgressBar.init_progress_bar(debug)
         for z in range(size):
             for y in range(size):
                 for x in range(size):
@@ -80,20 +81,23 @@ class SDFCurvature:
                         maxima = abs(curvature)
                     sorted_points.append((z, y, x, curvature))
                     points[z][y][x].curvature = curvature
-            ProgressBar.update_progress_bar(z / (size - 1))
-        ProgressBar.end_progress_bar()
-        print('   Minimum curvature found: ' + str(minima))
-        print('   Maximum curvature found: ' + str(maxima))
-        print('')
+            ProgressBar.update_progress_bar(debug, z / (size - 1))
+        ProgressBar.end_progress_bar(debug)
+        if debug:
+            print('   Minimum curvature found: ' + str(minima))
+            print('   Maximum curvature found: ' + str(maxima))
+            print('')
         return points, sorted_points
 
-    def classify_points(self, points, sorted_points):
-        print('=> Sorting curvature of points...\n')
+    def classify_points(self, points, sorted_points, debug=True):
+        if debug:
+            print('=> Sorting curvature of points...\n')
         sorted_points.sort(key=lambda elem: abs(elem[3]), reverse=True)
         curv_list = [abs(elem[3]) for elem in sorted_points]
         s = np.array(curv_list)
         p = np.percentile(s, np.array([25, 98.5, 99]))
-        print(p)
+        if debug:
+            print(p)
         for i in range(len(sorted_points)):
             if p[1] < np.abs(sorted_points[i][3]) < p[2]:
                 z = sorted_points[i][0]

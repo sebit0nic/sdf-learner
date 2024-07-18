@@ -10,23 +10,25 @@ class SDFReader:
     def __init__(self, file_name):
         self.file_name = file_name
 
-    def read_configuration(self):
-        print('=> Reading in configuration...')
+    def read_configuration(self, debug=True):
+        if debug:
+            print('=> Reading in configuration...')
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'r')
         line = file.readline()
         args = line.split(';')
         return int(args[0]), float(args[1]), float(args[2])
 
-    def read_points(self):
-        print('=> Reading in points...')
+    def read_points(self, debug=True):
+        if debug:
+            print('=> Reading in points...')
         points = []
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
         file.seek(0, os.SEEK_END)
         size = np.round(np.power(file.tell() // 4, 1 / 3)).astype(int)
         file.seek(0, 0)
-        ProgressBar.init_progress_bar()
+        ProgressBar.init_progress_bar(debug)
         for z in range(size):
             y_arr = []
             for y in range(size):
@@ -37,8 +39,8 @@ class SDFReader:
                     x_arr.append(SDFPoint(distance))
                 y_arr.append(x_arr)
             points.append(y_arr)
-            ProgressBar.update_progress_bar(z / (size - 1))
-        ProgressBar.end_progress_bar()
+            ProgressBar.update_progress_bar(debug, z / (size - 1))
+        ProgressBar.end_progress_bar(debug)
         print('')
         file.close()
         return points, size
@@ -75,10 +77,11 @@ class SDFWriter:
         self.file_name = file_name
         self.size = size
 
-    def write_points(self, points):
+    def write_points(self, points, debug=True):
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'wt')
-        print('=> Writing high estimated curvature points to file...\n')
+        if debug:
+            print('=> Writing high estimated curvature points to file...\n')
         for z in range(self.size):
             for y in range(self.size):
                 for x in range(self.size):

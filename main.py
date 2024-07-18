@@ -47,7 +47,7 @@ if __name__ == "__main__":
     tolerance = 2000
     percentage = 0.05
     epsilon = 0.1
-    sample_num = 1000
+    sample_num = 5
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -83,12 +83,12 @@ if __name__ == "__main__":
             i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
-            samples, size = sdf_reader.read_points()
+            samples, size = sdf_reader.read_points(False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
-            samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
-            samples = sdf_curvature.classify_points(samples, sorted_samples)
+            samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size, False)
+            samples = sdf_curvature.classify_points(samples, sorted_samples, False)
             sdf_writer = SDFWriter(o_path, size)
-            sdf_writer.write_points(samples)
+            sdf_writer.write_points(samples, False)
 
     if args.visualize is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.visualize).zfill(6)}{in_file_postfix}{in_file_extension}'
