@@ -119,8 +119,6 @@ if __name__ == "__main__":
         if torch.cuda.is_available():
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
-        for name, param in model.named_parameters():
-            print(f"Layer: {name} | Size: {param.size()} | Values : {param[:2]} \n")
 
         epochs = 5
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
