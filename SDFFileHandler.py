@@ -38,7 +38,7 @@ class SDFReader:
         points = []
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
-        size = self.compute_dimensions_from_file(file)
+        size = self.compute_dimensions_from_file(file, False)
         ProgressBar.init_progress_bar(debug)
         for z in range(size):
             y_arr = []

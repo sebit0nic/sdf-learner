@@ -9,13 +9,14 @@ from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
 import argparse
 import time
+import matplotlib.pyplot as plt
 
 
 class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
         # TODO: try with deconvolutional layers?
-        self.conv3d_stack = nn.Sequential(
+        self.conv3d_single_channel = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
@@ -29,7 +30,7 @@ class SDFNeuralNetwork(nn.Module):
         )
 
     def forward(self, x):
-        logits = self.conv3d_stack(x)
+        logits = self.conv3d_single_channel(x)
         return logits
 
 
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     tolerance = 2000
     percentage = 0.05
     epsilon = 0.1
-    sample_num = 5
+    sample_num = 100
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -104,46 +105,47 @@ if __name__ == "__main__":
 
     if args.train:
         full_dataset = SDFDataset('in\\', 'out\\', sample_num)
-        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [3, 2])
+        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.9, 0.1])
 
-        train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=10, shuffle=True)
         train_features, train_labels = next(iter(train_dataloader))
         test_features, test_labels = next(iter(test_dataloader))
-        print(f"Feature batch shape: {train_features.size()}")
-        print(f"Labels batch shape: {train_labels.size()}")
-        print(f"Feature batch shape: {test_features.size()}")
-        print(f"Labels batch shape: {test_labels.size()}")
 
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
 
-        epochs = 5
+        epochs = 20
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-        loss_ce = nn.CrossEntropyLoss()
+        loss_ce = nn.BCELoss()
+        losses = []
         for t in range(epochs):
-            print(f'### Epoch ({t + 1}) ###')
+            print(f'=> Epoch ({t + 1})')
+
+            # Training loop
             model.train()
+            loss = 0
             for batch, (X, y) in enumerate(train_dataloader):
-                # TODO: flatten prediction from 3D to 1D tensor
+                # Compute prediction of current model and compute loss
                 prediction = model(X)
                 prediction_normalized = prediction.round()
-                y = torch.squeeze(y).long()
-                prediction_transformed = torch.zeros((prediction.size()[0], 2, prediction.size()[2], prediction.size()[3], prediction.size()[4])).to(device)
-                prediction_transformed[:, 0, :, :, :] = torch.clone(torch.squeeze(prediction))
-                prediction_transformed[:, 1, :, :, :] = torch.clone(torch.squeeze(prediction))
-                print(f'Prediction size: {prediction.size()}')
-                print(f'Prediction normalized size: {prediction_normalized.size()}')
-                print(f'Target size: {y.size()}')
-                print(f'Number of positive groups in y: {torch.count_nonzero(y)}')
-                print(f'Number of positive groups in prediction: {torch.count_nonzero(prediction_normalized)}')
-                loss = loss_ce(prediction_transformed, y)
+                loss = loss_ce(prediction, y)
 
+                # Do backpropagation
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
                 loss = loss.item()
-                print(f"loss: {loss:>7f}")
+                print(f'  BCE loss batch ({batch + 1}): {loss} ({torch.count_nonzero(y)} / {torch.count_nonzero(prediction_normalized)})')
+            losses.append(loss)
+
+            # TODO: Test loop
+
+        plt.plot(losses)
+        plt.xlabel('Epochs')
+        plt.ylabel('BCE loss')
+        plt.title('BCE loss over epochs')
+        plt.show()
