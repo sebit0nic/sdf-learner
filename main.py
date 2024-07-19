@@ -119,24 +119,33 @@ if __name__ == "__main__":
         if torch.cuda.is_available():
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
+        for name, param in model.named_parameters():
+            print(f"Layer: {name} | Size: {param.size()} | Values : {param[:2]} \n")
 
-        epochs = 1
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-        loss_nll = nn.CrossEntropyLoss()
+        epochs = 5
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+        loss_ce = nn.CrossEntropyLoss()
         for t in range(epochs):
+            print(f'### Epoch ({t + 1}) ###')
             model.train()
             for batch, (X, y) in enumerate(train_dataloader):
-                pred = model(X)
-                # y = torch.squeeze(y)
-                print(pred.size())
-                print(pred.round())
-                print(pred.amax())
-                print(pred.amin())
-                # loss = loss_nll(pred, y)
+                # TODO: flatten prediction from 3D to 1D tensor
+                prediction = model(X)
+                prediction_normalized = prediction.round()
+                y = torch.squeeze(y).long()
+                prediction_transformed = torch.zeros((prediction.size()[0], 2, prediction.size()[2], prediction.size()[3], prediction.size()[4])).to(device)
+                prediction_transformed[:, 0, :, :, :] = torch.clone(torch.squeeze(prediction))
+                prediction_transformed[:, 1, :, :, :] = torch.clone(torch.squeeze(prediction))
+                print(f'Prediction size: {prediction.size()}')
+                print(f'Prediction normalized size: {prediction_normalized.size()}')
+                print(f'Target size: {y.size()}')
+                print(f'Number of positive groups in y: {torch.count_nonzero(y)}')
+                print(f'Number of positive groups in prediction: {torch.count_nonzero(prediction_normalized)}')
+                loss = loss_ce(prediction_transformed, y)
 
-                # loss.backward()
-                # optimizer.step()
-                # optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
-                # loss = loss.item()
-                # print(f"loss: {loss:>7f}")
+                loss = loss.item()
+                print(f"loss: {loss:>7f}")
