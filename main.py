@@ -25,8 +25,7 @@ class SDFNeuralNetwork(nn.Module):
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Upsample(scale_factor=2, mode='trilinear'),
             nn.Upsample(scale_factor=2, mode='trilinear'),
-            nn.Upsample(scale_factor=2, mode='trilinear'),
-            nn.Sigmoid()
+            nn.Upsample(scale_factor=2, mode='trilinear')
         )
 
     def forward(self, x):
@@ -105,10 +104,15 @@ if __name__ == "__main__":
 
     if args.train:
         full_dataset = SDFDataset('in\\', 'out\\', sample_num)
-        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.9, 0.1])
+        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
-        train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=10, shuffle=True)
+        # Hyper-parameters of training
+        epochs = 5
+        learning_rate = 0.001
+        batch_size = 10
+
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
         train_features, train_labels = next(iter(train_dataloader))
         test_features, test_labels = next(iter(test_dataloader))
 
@@ -117,34 +121,48 @@ if __name__ == "__main__":
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
 
-        epochs = 20
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-        loss_ce = nn.BCELoss()
-        losses = []
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+        loss_bce = nn.BCEWithLogitsLoss()
+        train_losses = []
+        test_losses = []
         for t in range(epochs):
             print(f'=> Epoch ({t + 1})')
 
             # Training loop
             model.train()
-            loss = 0
+            train_loss = 0
             for batch, (X, y) in enumerate(train_dataloader):
                 # Compute prediction of current model and compute loss
                 prediction = model(X)
-                prediction_normalized = prediction.round()
-                loss = loss_ce(prediction, y)
+                train_loss = loss_bce(prediction, y)
 
                 # Do backpropagation
-                loss.backward()
+                train_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
-                loss = loss.item()
-                print(f'  BCE loss batch ({batch + 1}): {loss} ({torch.count_nonzero(y)} / {torch.count_nonzero(prediction_normalized)})')
-            losses.append(loss)
+                print(f'   BCE loss batch ({batch + 1}): {train_loss.item()}')
+            train_losses.append(train_loss.item())
 
-            # TODO: Test loop
+            # Test loop
+            model.eval()
+            test_loss = 0
+            accuracy = 0.0
+            with torch.no_grad():
+                for X, y in test_dataloader:
+                    sigmoid = nn.Sigmoid()
+                    prediction = sigmoid(model(X))
+                    test_loss += loss_bce(prediction, y).item()
+                    prediction = prediction.round()
+                    accuracy += torch.eq(prediction, y).sum()
+            accuracy /= len(test_dataloader.dataset)
+            test_loss /= len(test_dataloader)
+            print(f'   => Test set accuracy: {accuracy}, BCE loss: {test_loss}')
+            print('')
+            test_losses.append(test_loss)
 
-        plt.plot(losses)
+        plt.plot(train_losses)
+        plt.plot(test_losses)
         plt.xlabel('Epochs')
         plt.ylabel('BCE loss')
         plt.title('BCE loss over epochs')
