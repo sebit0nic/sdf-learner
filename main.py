@@ -40,7 +40,8 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--compute_one', help='Compute points of high curvature for one given SDF file.')
     parser.add_argument('-a', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
-    parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given SDF file.')
+    parser.add_argument('-vb', '--visualize', help='Visualize points of high curvature for one given SDF file.')
+    # TODO: argument to visualize csv file
     parser.add_argument('-t', '--train', action='store', const='Set', nargs='?',
                         help='Train the neural network using provided samples and labels.')
     args = parser.parse_args()
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     tolerance = 2000
     percentage = 0.05
     epsilon = 0.1
-    sample_num = 100
+    sample_num = 1000
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -106,16 +107,20 @@ if __name__ == "__main__":
         full_dataset = SDFDataset('in\\', 'out\\', sample_num)
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
-        # Hyper-parameters of training
-        epochs = 5
+        # Hyper-parameters of training.
+        epochs = 1
         learning_rate = 0.001
-        batch_size = 10
+        batch_size = 20
 
+        # Initialize train + validation + test data loader with given batch size.
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
-        train_features, train_labels = next(iter(train_dataloader))
-        test_features, test_labels = next(iter(test_dataloader))
 
+        # Get dimension of input data (most likely always 64 * 64 * 64).
+        train_features, _ = next(iter(train_dataloader))
+        dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
+
+        # Check if we have GPU available to run tensors on.
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
@@ -125,6 +130,7 @@ if __name__ == "__main__":
         loss_bce = nn.BCEWithLogitsLoss()
         train_losses = []
         test_losses = []
+        accuracies = []
         for t in range(epochs):
             print(f'=> Epoch ({t + 1})')
 
@@ -148,22 +154,30 @@ if __name__ == "__main__":
             model.eval()
             test_loss = 0
             accuracy = 0.0
+            sigmoid = nn.Sigmoid()
             with torch.no_grad():
                 for X, y in test_dataloader:
-                    sigmoid = nn.Sigmoid()
-                    prediction = sigmoid(model(X))
+                    prediction = model(X)
                     test_loss += loss_bce(prediction, y).item()
-                    prediction = prediction.round()
-                    accuracy += torch.eq(prediction, y).sum()
-            accuracy /= len(test_dataloader.dataset)
+                    prediction = sigmoid(prediction).round()
+                    accuracy += torch.eq(prediction, y).sum().item()
+            accuracy /= len(test_dataset) * dim_x * dim_y * dim_z
             test_loss /= len(test_dataloader)
             print(f'   => Test set accuracy: {accuracy}, BCE loss: {test_loss}')
             print('')
             test_losses.append(test_loss)
+            accuracies.append(accuracy)
 
-        plt.plot(train_losses)
-        plt.plot(test_losses)
+        # TODO: save some predicted samples to pred/ folder (to visualize later)
+        # sigmoid = nn.Sigmoid()
+        # prediction = sigmoid(model(full_dataset[0][0].reshape((1, 1, 64, 64, 64))))
+        # sdf_visualizer = SDFVisualizer(point_size)
+        # sdf_visualizer.plot_tensor(prediction.squeeze(), dim_x)
+
+        plt.plot(train_losses, color='blue')
+        plt.plot(test_losses, color='green')
+        plt.plot(accuracies, color='green', linestyle='dashed')
         plt.xlabel('Epochs')
-        plt.ylabel('BCE loss')
-        plt.title('BCE loss over epochs')
+        plt.ylabel('Loss / accuracy')
+        plt.title('BCE loss / test accuracy over epochs')
         plt.show()
