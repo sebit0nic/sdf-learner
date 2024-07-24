@@ -1,6 +1,5 @@
 from SDFFileHandler import SDFReader
 import torch
-import os
 from torch.utils.data import Dataset
 
 
@@ -18,6 +17,7 @@ class SDFDataset(Dataset):
         if torch.cuda.is_available():
             device = 'cuda'
 
+        # TODO: move this to __init__ (possible speedup?) => now 4:30 for 1 epoch
         in_reader = SDFReader(f'{self.input_folder}sample{item:06d}_subdiv.bin')
         in_tensor = in_reader.read_input_as_tensor(device)
 

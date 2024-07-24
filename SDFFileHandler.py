@@ -32,9 +32,9 @@ class SDFReader:
         args = line.split(';')
         return int(args[0]), float(args[1]), float(args[2])
 
-    def read_points(self, debug=True):
+    def read_points_from_bin(self, debug=True):
         if debug:
-            print('=> Reading in points...')
+            print('=> Reading in points from bin...')
         points = []
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
@@ -48,6 +48,33 @@ class SDFReader:
                     data = file.read(4)
                     distance = struct.unpack('f', data)[0]
                     x_arr.append(SDFPoint(distance))
+                y_arr.append(x_arr)
+            points.append(y_arr)
+            ProgressBar.update_progress_bar(debug, z / (size - 1))
+        ProgressBar.end_progress_bar(debug)
+        print('')
+        file.close()
+        return points, size
+
+    def read_points_from_csv(self, debug=True):
+        if debug:
+            print('=> Reading in points from csv...')
+        points = []
+        file_path = os.getcwd() + '\\' + self.file_name
+        file = open(file_path, 'r')
+        size = self.compute_dimensions_from_file(file, True)
+        labels_flat = list(map(int, list(csv.reader(file))[0]))
+        i = 0
+        ProgressBar.init_progress_bar(debug)
+        for z in range(size):
+            y_arr = []
+            for y in range(size):
+                x_arr = []
+                for x in range(size):
+                    p = SDFPoint(0)
+                    p.high_curvature = labels_flat[i]
+                    x_arr.append(p)
+                    i += 1
                 y_arr.append(x_arr)
             points.append(y_arr)
             ProgressBar.update_progress_bar(debug, z / (size - 1))

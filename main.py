@@ -34,14 +34,15 @@ class SDFNeuralNetwork(nn.Module):
 
 
 if __name__ == "__main__":
+    start_time = time.perf_counter()
+
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the curvature of a signed distance field.')
-    parser.add_argument('-o', '--compute_one', help='Compute points of high curvature for one given SDF file.')
+    parser.add_argument('-o', '--compute_one', help='Compute points of high curvature for one given bin file.')
     parser.add_argument('-a', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
-    parser.add_argument('-vb', '--visualize', help='Visualize points of high curvature for one given SDF file.')
-    # TODO: argument to visualize csv file
+    parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-t', '--train', action='store', const='Set', nargs='?',
                         help='Train the neural network using provided samples and labels.')
     args = parser.parse_args()
@@ -73,7 +74,7 @@ if __name__ == "__main__":
         i_path = f'{in_folder}{in_file_prefix}{str(args.compute_one).zfill(6)}{in_file_postfix}{in_file_extension}'
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
-        samples, size = sdf_reader.read_points()
+        samples, size = sdf_reader.read_points_from_bin()
         sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
         samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
         samples = sdf_curvature.classify_points(samples, sorted_samples)
@@ -86,7 +87,7 @@ if __name__ == "__main__":
             i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
-            samples, size = sdf_reader.read_points(False)
+            samples, size = sdf_reader.read_points_from_bin(False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
             samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size, False)
             samples = sdf_curvature.classify_points(samples, sorted_samples, False)
@@ -94,14 +95,22 @@ if __name__ == "__main__":
             sdf_writer.write_points(samples, False)
 
     if args.visualize is not None:
-        i_path = f'{in_folder}{in_file_prefix}{str(args.visualize).zfill(6)}{in_file_postfix}{in_file_extension}'
+        i_path = str(args.visualize)
+        file_extension = str(i_path)[-3:]
         sdf_reader = SDFReader(i_path)
-        samples, size = sdf_reader.read_points()
-        sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
-        samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
-        samples = sdf_curvature.classify_points(samples, sorted_samples)
-        sdf_visualizer = SDFVisualizer(point_size)
-        sdf_visualizer.plot_points(samples, size)
+        if file_extension == 'bin':
+            samples, size = sdf_reader.read_points_from_bin()
+            sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
+            samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
+            samples = sdf_curvature.classify_points(samples, sorted_samples)
+            sdf_visualizer = SDFVisualizer(point_size)
+            sdf_visualizer.plot_points(samples, size)
+        elif file_extension == 'csv':
+            samples, size = sdf_reader.read_points_from_csv()
+            sdf_visualizer = SDFVisualizer(point_size)
+            sdf_visualizer.plot_points(samples, size)
+        else:
+            print(f'Invalid file format .\'{file_extension}\' found.')
 
     if args.train:
         full_dataset = SDFDataset('in\\', 'out\\', sample_num)
@@ -181,3 +190,6 @@ if __name__ == "__main__":
         plt.ylabel('Loss / accuracy')
         plt.title('BCE loss / test accuracy over epochs')
         plt.show()
+
+    end_time = time.perf_counter()
+    print(f'\nFinished in {int((end_time - start_time) / 60)} minutes, {(end_time - start_time) % 60:.4f} seconds.')
