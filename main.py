@@ -117,7 +117,7 @@ if __name__ == "__main__":
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
         # Hyper-parameters of training.
-        epochs = 1
+        epochs = 20
         learning_rate = 0.001
         batch_size = 20
 
@@ -135,6 +135,7 @@ if __name__ == "__main__":
             device = 'cuda'
         model = SDFNeuralNetwork().to(device)
 
+        print(f'=> Starting training...')
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
         loss_bce = nn.BCEWithLogitsLoss()
         train_losses = []

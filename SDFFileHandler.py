@@ -23,16 +23,8 @@ class SDFReader:
         file.seek(0, 0)
         return size
 
-    def read_configuration(self, debug=True):
-        if debug:
-            print('=> Reading in configuration...')
-        file_path = os.getcwd() + '\\' + self.file_name
-        file = open(file_path, 'r')
-        line = file.readline()
-        args = line.split(';')
-        return int(args[0]), float(args[1]), float(args[2])
-
     def read_points_from_bin(self, debug=True):
+        # TODO: use numpy arrays
         if debug:
             print('=> Reading in points from bin...')
         points = []
@@ -57,6 +49,7 @@ class SDFReader:
         return points, size
 
     def read_points_from_csv(self, debug=True):
+        # TODO: use numpy arrays
         if debug:
             print('=> Reading in points from csv...')
         points = []
@@ -83,32 +76,58 @@ class SDFReader:
         file.close()
         return points, size
 
-    def read_input_as_tensor(self, device):
-        file_path = os.getcwd() + '\\' + self.file_name
+    def read_input_as_tensor(self, device, sample_num, debug=True):
+        # Initialize array by using first available sample.
+        file_path = f'{os.getcwd()}\\{self.file_name}sample000000_subdiv.bin'
         file = open(file_path, 'rb')
         size = self.compute_dimensions_from_file(file, False)
-        points = np.zeros((1, size, size, size))
-        for z in range(size):
-            for y in range(size):
-                for x in range(size):
-                    data = file.read(4)
-                    distance = struct.unpack('f', data)[0]
-                    points[0, z, y, x] = distance
+        points = np.zeros((sample_num, 1, size, size, size))
         file.close()
+
+        # Loop over all samples and store them in array.
+        print(f'=> Init dataset samples...')
+        ProgressBar.init_progress_bar(debug)
+        for i in range(sample_num):
+            file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}_subdiv.bin'
+            file = open(file_path, 'rb')
+            data = np.fromfile(file, dtype=np.float32)
+            points[i, 0] = np.copy(data).reshape((size, size, size))
+            file.close()
+            ProgressBar.update_progress_bar(debug, i / (sample_num - 1))
+        ProgressBar.end_progress_bar(debug)
+        print('')
+
+        # Finally, convert array to tensor.
         return torch.as_tensor(points, dtype=torch.float32, device=device)
 
-    def read_labels_as_tensor(self, device):
-        file_path = os.getcwd() + '\\' + self.file_name
+    def read_labels_as_tensor(self, device, sample_num, debug=True):
+        # Initialize array by using first available label.
+        file_path = f'{os.getcwd()}\\{self.file_name}sample000000.csv'
         file = open(file_path, 'r')
-        labels_flat = list(map(int, list(csv.reader(file))[0]))
         size = self.compute_dimensions_from_file(file, True)
-        labels = np.zeros((1, size, size, size))
-        i = 0
-        for z in range(size):
-            for y in range(size):
-                for x in range(size):
-                    labels[0, z, y, x] = labels_flat[i]
-                    i += 1
+        labels = np.zeros((sample_num, 1, size, size, size))
+        file.close()
+
+        # Loop over all labels and store them in array.
+        print(f'=> Init dataset labels...')
+        ProgressBar.init_progress_bar(debug)
+        for i in range(sample_num):
+            file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}.csv'
+            file = open(file_path, 'r')
+            labels_flat = list(map(int, list(csv.reader(file))[0]))
+            j = 0
+            # TODO: read in data once, then split into numpy array
+            for z in range(size):
+                for y in range(size):
+                    for x in range(size):
+                        labels[i, 0, z, y, x] = labels_flat[j]
+                        j += 1
+            file.close()
+            ProgressBar.update_progress_bar(debug, i / (sample_num - 1))
+        ProgressBar.end_progress_bar(debug)
+        print('')
+
+        # Finally, convert array to tensor.
         return torch.as_tensor(labels, dtype=torch.float32, device=device)
 
 
