@@ -114,14 +114,8 @@ class SDFReader:
         for i in range(sample_num):
             file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}.csv'
             file = open(file_path, 'r')
-            labels_flat = list(map(int, list(csv.reader(file))[0]))
-            j = 0
-            # TODO: read in data once, then split into numpy array
-            for z in range(size):
-                for y in range(size):
-                    for x in range(size):
-                        labels[i, 0, z, y, x] = labels_flat[j]
-                        j += 1
+            data = np.fromfile(file, dtype=np.int32, sep=',')
+            labels[i, 0] = np.copy(data).reshape((size, size, size))
             file.close()
             ProgressBar.update_progress_bar(debug, i / (sample_num - 1))
         ProgressBar.end_progress_bar(debug)
