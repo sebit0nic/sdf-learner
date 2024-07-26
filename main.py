@@ -1,3 +1,4 @@
+import numpy as np
 import torch.utils.data
 from torch.utils.data import DataLoader
 from torch import nn
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     tolerance = 2000
     percentage = 0.05
     epsilon = 0.1
+    start_sample_num = 430
     sample_num = 1000
     in_folder = 'in/'
     in_file_prefix = 'sample'
@@ -59,7 +61,7 @@ if __name__ == "__main__":
     out_folder = 'out/'
     out_file_prefix = 'sample'
     out_file_postfix = ''
-    out_file_extension = '.csv'
+    out_file_extension = '.bin'
 
     print('=> Parameters:')
     print('   Compute one:         ' + str(args.compute_one))
@@ -69,48 +71,46 @@ if __name__ == "__main__":
     time.sleep(2)
     print('')
 
-    samples = []
     if args.compute_one is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.compute_one).zfill(6)}{in_file_postfix}{in_file_extension}'
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
-        samples, size = sdf_reader.read_points_from_bin()
+        points = sdf_reader.read_points_from_bin(False)
         sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
-        samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
-        samples = sdf_curvature.classify_points(samples, sorted_samples)
-        sdf_writer = SDFWriter(o_path, size)
-        sdf_writer.write_points(samples)
+        curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
+        points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
+        sdf_writer = SDFWriter(o_path)
+        sdf_writer.write_points(points_of_interest)
 
     if args.compute_all is not None:
-        for i in range(sample_num):
+        for i in range(start_sample_num, sample_num):
             print(f'=> Computing sample {i + 1}')
             i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
-            samples, size = sdf_reader.read_points_from_bin(False)
+            points = sdf_reader.read_points_from_bin(False, False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
-            samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size, False)
-            samples = sdf_curvature.classify_points(samples, sorted_samples, False)
-            sdf_writer = SDFWriter(o_path, size)
-            sdf_writer.write_points(samples, False)
+            curvatures, sorted_samples = sdf_curvature.calculate_curvature(points, False)
+            points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples, False)
+            sdf_writer = SDFWriter(o_path)
+            sdf_writer.write_points(points_of_interest, False)
 
     if args.visualize is not None:
         i_path = str(args.visualize)
-        file_extension = str(i_path)[-3:]
         sdf_reader = SDFReader(i_path)
-        if file_extension == 'bin':
-            samples, size = sdf_reader.read_points_from_bin()
+        sdf_visualizer = SDFVisualizer(point_size)
+        folder = i_path.split('/')[0]
+        if folder == 'in':
+            points = sdf_reader.read_points_from_bin(False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
-            samples, sorted_samples = sdf_curvature.calculate_curvature(samples, size)
-            samples = sdf_curvature.classify_points(samples, sorted_samples)
-            sdf_visualizer = SDFVisualizer(point_size)
-            sdf_visualizer.plot_points(samples, size)
-        elif file_extension == 'csv':
-            samples, size = sdf_reader.read_points_from_csv()
-            sdf_visualizer = SDFVisualizer(point_size)
-            sdf_visualizer.plot_points(samples, size)
+            curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
+            points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
+            sdf_visualizer.plot_points(points_of_interest, curvatures)
+        elif folder == 'out' or folder == 'pred':
+            points_of_interest = sdf_reader.read_points_from_bin(True)
+            sdf_visualizer.plot_points(points_of_interest, np.zeros(0))
         else:
-            print(f'Invalid file format .\'{file_extension}\' found.')
+            print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
         full_dataset = SDFDataset('in\\', 'out\\', sample_num)

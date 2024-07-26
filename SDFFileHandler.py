@@ -1,8 +1,5 @@
 from SDFVisualizer import ProgressBar
-from SDFPoint import SDFPoint
 import os
-import struct
-import csv
 import numpy as np
 import torch
 
@@ -12,69 +9,26 @@ class SDFReader:
         self.file_name = file_name
 
     @staticmethod
-    def compute_dimensions_from_file(file, is_label):
+    def compute_dimensions_from_file(file):
         file.seek(0, os.SEEK_END)
-        if is_label:
-            # CSV file: each label is inbetween comma => divide by 2
-            size = np.round(np.power(file.tell() // 2, 1 / 3)).astype(int)
-        else:
-            # BIN file: each distance is float => divide by 4
-            size = np.round(np.power(file.tell() // 4, 1 / 3)).astype(int)
+        # BIN file: each distance / label is float32 / int32 => divide by 4
+        size = np.round(np.power(file.tell() // 4, 1 / 3)).astype(int)
         file.seek(0, 0)
         return size
 
-    def read_points_from_bin(self, debug=True):
-        # TODO: use numpy arrays
+    def read_points_from_bin(self, is_label, debug=True):
         if debug:
             print('=> Reading in points from bin...')
-        points = []
+            print('')
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'rb')
-        size = self.compute_dimensions_from_file(file, False)
-        ProgressBar.init_progress_bar(debug)
-        for z in range(size):
-            y_arr = []
-            for y in range(size):
-                x_arr = []
-                for x in range(size):
-                    data = file.read(4)
-                    distance = struct.unpack('f', data)[0]
-                    x_arr.append(SDFPoint(distance))
-                y_arr.append(x_arr)
-            points.append(y_arr)
-            ProgressBar.update_progress_bar(debug, z / (size - 1))
-        ProgressBar.end_progress_bar(debug)
-        print('')
+        size = self.compute_dimensions_from_file(file)
+        if is_label:
+            points = np.fromfile(file, dtype=np.int32).reshape((size, size, size))
+        else:
+            points = np.fromfile(file, dtype=np.float32).reshape((size, size, size))
         file.close()
-        return points, size
-
-    def read_points_from_csv(self, debug=True):
-        # TODO: use numpy arrays
-        if debug:
-            print('=> Reading in points from csv...')
-        points = []
-        file_path = os.getcwd() + '\\' + self.file_name
-        file = open(file_path, 'r')
-        size = self.compute_dimensions_from_file(file, True)
-        labels_flat = list(map(int, list(csv.reader(file))[0]))
-        i = 0
-        ProgressBar.init_progress_bar(debug)
-        for z in range(size):
-            y_arr = []
-            for y in range(size):
-                x_arr = []
-                for x in range(size):
-                    p = SDFPoint(0)
-                    p.high_curvature = labels_flat[i]
-                    x_arr.append(p)
-                    i += 1
-                y_arr.append(x_arr)
-            points.append(y_arr)
-            ProgressBar.update_progress_bar(debug, z / (size - 1))
-        ProgressBar.end_progress_bar(debug)
-        print('')
-        file.close()
-        return points, size
+        return points
 
     def read_input_as_tensor(self, device, sample_num, debug=True):
         # Initialize array by using first available sample.
@@ -126,20 +80,13 @@ class SDFReader:
 
 
 class SDFWriter:
-    def __init__(self, file_name, size):
+    def __init__(self, file_name):
         self.file_name = file_name
-        self.size = size
 
-    def write_points(self, points, debug=True):
+    def write_points(self, points_of_interest, debug=True):
         file_path = os.getcwd() + '\\' + self.file_name
-        file = open(file_path, 'wt')
+        file = open(file_path, 'wb')
         if debug:
             print('=> Writing high estimated curvature points to file...\n')
-        for z in range(self.size):
-            for y in range(self.size):
-                for x in range(self.size):
-                    if x == 0 and y == 0 and z == 0:
-                        file.write(str(points[z][y][x].high_curvature))
-                    else:
-                        file.write(',' + str(points[z][y][x].high_curvature))
+        points_of_interest.tofile(file)
         file.close()
