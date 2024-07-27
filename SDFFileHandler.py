@@ -30,21 +30,33 @@ class SDFReader:
         file.close()
         return points
 
-    def read_input_as_tensor(self, device, sample_num, debug=True):
+    def read_dataset_from_bin(self, device, sample_num, is_label, debug=True):
         # Initialize array by using first available sample.
-        file_path = f'{os.getcwd()}\\{self.file_name}sample000000_subdiv.bin'
+        if is_label:
+            file_path = f'{os.getcwd()}\\{self.file_name}sample000000.bin'
+        else:
+            file_path = f'{os.getcwd()}\\{self.file_name}sample000000_subdiv.bin'
         file = open(file_path, 'rb')
-        size = self.compute_dimensions_from_file(file, False)
+        size = self.compute_dimensions_from_file(file)
         points = np.zeros((sample_num, 1, size, size, size))
         file.close()
 
         # Loop over all samples and store them in array.
-        print(f'=> Init dataset samples...')
+        if is_label:
+            print(f'=> Init dataset labels...')
+        else:
+            print(f'=> Init dataset samples...')
         ProgressBar.init_progress_bar(debug)
         for i in range(sample_num):
-            file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}_subdiv.bin'
+            if is_label:
+                file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}.bin'
+            else:
+                file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}_subdiv.bin'
             file = open(file_path, 'rb')
-            data = np.fromfile(file, dtype=np.float32)
+            if is_label:
+                data = np.fromfile(file, dtype=np.int32)
+            else:
+                data = np.fromfile(file, dtype=np.float32)
             points[i, 0] = np.copy(data).reshape((size, size, size))
             file.close()
             ProgressBar.update_progress_bar(debug, i / (sample_num - 1))
@@ -53,30 +65,6 @@ class SDFReader:
 
         # Finally, convert array to tensor.
         return torch.as_tensor(points, dtype=torch.float32, device=device)
-
-    def read_labels_as_tensor(self, device, sample_num, debug=True):
-        # Initialize array by using first available label.
-        file_path = f'{os.getcwd()}\\{self.file_name}sample000000.csv'
-        file = open(file_path, 'r')
-        size = self.compute_dimensions_from_file(file, True)
-        labels = np.zeros((sample_num, 1, size, size, size))
-        file.close()
-
-        # Loop over all labels and store them in array.
-        print(f'=> Init dataset labels...')
-        ProgressBar.init_progress_bar(debug)
-        for i in range(sample_num):
-            file_path = f'{os.getcwd()}\\{self.file_name}sample{i:06d}.csv'
-            file = open(file_path, 'r')
-            data = np.fromfile(file, dtype=np.int32, sep=',')
-            labels[i, 0] = np.copy(data).reshape((size, size, size))
-            file.close()
-            ProgressBar.update_progress_bar(debug, i / (sample_num - 1))
-        ProgressBar.end_progress_bar(debug)
-        print('')
-
-        # Finally, convert array to tensor.
-        return torch.as_tensor(labels, dtype=torch.float32, device=device)
 
 
 class SDFWriter:

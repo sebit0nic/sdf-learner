@@ -52,7 +52,7 @@ if __name__ == "__main__":
     tolerance = 2000
     percentage = 0.05
     epsilon = 0.1
-    start_sample_num = 430
+    start_sample_num = 0
     sample_num = 1000
     in_folder = 'in/'
     in_file_prefix = 'sample'

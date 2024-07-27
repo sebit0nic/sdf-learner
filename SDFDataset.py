@@ -11,9 +11,9 @@ class SDFDataset(Dataset):
         if torch.cuda.is_available():
             device = 'cuda'
         in_reader = SDFReader(f'{input_folder}')
-        self.in_tensor = in_reader.read_input_as_tensor(device, sample_num)
+        self.in_tensor = in_reader.read_dataset_from_bin(device, sample_num, False)
         out_reader = SDFReader(f'{output_folder}')
-        self.out_tensor = out_reader.read_labels_as_tensor(device, sample_num)
+        self.out_tensor = out_reader.read_dataset_from_bin(device, sample_num, True)
 
     def __len__(self):
         return self.sample_num
