@@ -2,6 +2,10 @@ import numpy as np
 import torch.utils.data
 from torch.utils.data import DataLoader
 from torch import nn
+from torcheval.metrics import BinaryAccuracy
+from torcheval.metrics import BinaryPrecision
+from torcheval.metrics import BinaryRecall
+from torcheval.metrics import BinaryF1Score
 
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
@@ -119,7 +123,7 @@ if __name__ == "__main__":
         # Hyper-parameters of training.
         epochs = 20
         learning_rate = 0.001
-        batch_size = 20
+        batch_size = 32
 
         # Initialize train + validation + test data loader with given batch size.
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -137,10 +141,13 @@ if __name__ == "__main__":
 
         print(f'=> Starting training...')
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-        loss_bce = nn.BCEWithLogitsLoss()
+        loss_bce = nn.BCEWithLogitsLoss().to(device)
         train_losses = []
         test_losses = []
-        accuracies = []
+        accuracy_list = []
+        precision_list = []
+        recall_list = []
+        f1_list = []
         for t in range(epochs):
             print(f'=> Epoch ({t + 1})')
 
@@ -164,19 +171,43 @@ if __name__ == "__main__":
             model.eval()
             test_loss = 0
             accuracy = 0.0
-            sigmoid = nn.Sigmoid()
+            precision = 0.0
+            recall = 0.0
+            f1_score = 0.0
+            accuracy_metric = BinaryAccuracy().to(device)
+            precision_metric = BinaryPrecision().to(device)
+            recall_metric = BinaryRecall().to(device)
+            f1_metric = BinaryF1Score().to(device)
+            sigmoid = nn.Sigmoid().to(device)
             with torch.no_grad():
-                for X, y in test_dataloader:
-                    prediction = model(X)
-                    test_loss += loss_bce(prediction, y).item()
-                    prediction = sigmoid(prediction).round()
-                    accuracy += torch.eq(prediction, y).sum().item()
-            accuracy /= len(test_dataset) * dim_x * dim_y * dim_z
-            test_loss /= len(test_dataloader)
-            print(f'   => Test set accuracy: {accuracy}, BCE loss: {test_loss}')
+                for X, y in test_dataset:
+                    # Predict output of one test sample
+                    prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
+                    test_loss += loss_bce(prediction, y.squeeze()).item()
+
+                    # Update metrics (accuracy, precision, recall, f1) of test samples
+                    prediction = sigmoid(prediction)
+                    accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
+                    precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
+                    recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                    f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
+            accuracy = accuracy_metric.compute().item()
+            precision = precision_metric.compute().item()
+            recall = recall_metric.compute().item()
+            f1_score = f1_metric.compute().item()
+            test_loss /= len(test_dataset)
+            print(f'   => Test set summary:\n'
+                  f'    - Accuracy: {accuracy}\n'
+                  f'    - Precision: {precision}\n'
+                  f'    - Recall: {recall}\n'
+                  f'    - F1 score: {f1_score}\n'
+                  f'    - BCE loss: {test_loss}\n')
             print('')
             test_losses.append(test_loss)
-            accuracies.append(accuracy)
+            accuracy_list.append(accuracy)
+            precision_list.append(precision)
+            recall_list.append(recall)
+            f1_list.append(f1_score)
 
         # TODO: save some predicted samples to pred/ folder (to visualize later)
         # sigmoid = nn.Sigmoid()
@@ -184,9 +215,19 @@ if __name__ == "__main__":
         # sdf_visualizer = SDFVisualizer(point_size)
         # sdf_visualizer.plot_tensor(prediction.squeeze(), dim_x)
 
+        # plt.plot(accuracy_list, color='blue', label='Accuracy')
+        plt.plot(precision_list, color='green', label='Precision')
+        plt.plot(recall_list, color='blue', label='Recall')
+        plt.plot(f1_list, color='red', label='F1 Score')
+        plt.xlabel('Epochs')
+        plt.ylabel('Metric')
+        plt.title('Metrics over epochs')
+        # plt.yticks([0, 0.25, 0.5, 0.75, 1.0])
+        plt.legend()
+        plt.show()
+
         plt.plot(train_losses, color='blue')
         plt.plot(test_losses, color='green')
-        plt.plot(accuracies, color='green', linestyle='dashed')
         plt.xlabel('Epochs')
         plt.ylabel('Loss / accuracy')
         plt.title('BCE loss / test accuracy over epochs')
