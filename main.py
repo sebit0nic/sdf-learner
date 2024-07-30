@@ -20,8 +20,7 @@ import matplotlib.pyplot as plt
 class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        # TODO: try with deconvolutional layers?
-        self.conv3d_single_channel = nn.Sequential(
+        self.conv3d_upsampling_1 = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
@@ -33,8 +32,20 @@ class SDFNeuralNetwork(nn.Module):
             nn.Upsample(scale_factor=2, mode='trilinear')
         )
 
+        self.conv3d_transpose_conv_1 = nn.Sequential(
+            nn.Conv3d(in_channels=1, out_channels=5, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=5, out_channels=10, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=10, out_channels=20, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.ConvTranspose3d(in_channels=20, out_channels=10, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=10, out_channels=5, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=5, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
+        )
+
     def forward(self, x):
-        logits = self.conv3d_single_channel(x)
+        logits = self.conv3d_transpose_conv_1(x)
         return logits
 
 
@@ -197,11 +208,11 @@ if __name__ == "__main__":
             f1_score = f1_metric.compute().item()
             test_loss /= len(test_dataset)
             print(f'   => Test set summary:\n'
-                  f'    - Accuracy: {accuracy}\n'
-                  f'    - Precision: {precision}\n'
-                  f'    - Recall: {recall}\n'
-                  f'    - F1 score: {f1_score}\n'
-                  f'    - BCE loss: {test_loss}\n')
+                  f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n'
+                  f'    - Precision: {precision * 100:.2f}% ({precision})\n'
+                  f'    - Recall:    {recall * 100:.2f}% ({recall})\n'
+                  f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n'
+                  f'    - BCE loss:  {test_loss}\n')
             print('')
             test_losses.append(test_loss)
             accuracy_list.append(accuracy)
@@ -210,10 +221,10 @@ if __name__ == "__main__":
             f1_list.append(f1_score)
 
         # TODO: save some predicted samples to pred/ folder (to visualize later)
-        # sigmoid = nn.Sigmoid()
-        # prediction = sigmoid(model(full_dataset[0][0].reshape((1, 1, 64, 64, 64))))
-        # sdf_visualizer = SDFVisualizer(point_size)
-        # sdf_visualizer.plot_tensor(prediction.squeeze(), dim_x)
+        sigmoid = nn.Sigmoid()
+        prediction = sigmoid(model(full_dataset[0][0].reshape((1, 1, 64, 64, 64))))
+        sdf_visualizer = SDFVisualizer(point_size)
+        sdf_visualizer.plot_tensor(prediction.squeeze(), dim_x)
 
         # plt.plot(accuracy_list, color='blue', label='Accuracy')
         plt.plot(precision_list, color='green', label='Precision')
