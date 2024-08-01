@@ -23,10 +23,13 @@ class SDFNeuralNetwork(nn.Module):
         self.conv3d_upsampling_1 = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.Upsample(scale_factor=2, mode='trilinear'),
             nn.Upsample(scale_factor=2, mode='trilinear'),
             nn.Upsample(scale_factor=2, mode='trilinear')
@@ -35,17 +38,20 @@ class SDFNeuralNetwork(nn.Module):
         self.conv3d_transpose_conv_1 = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=5, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.Conv3d(in_channels=5, out_channels=10, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.Conv3d(in_channels=10, out_channels=20, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.LeakyReLU(),
             nn.ConvTranspose3d(in_channels=20, out_channels=10, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
             nn.ConvTranspose3d(in_channels=10, out_channels=5, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
             nn.ConvTranspose3d(in_channels=5, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
         )
 
     def forward(self, x):
-        logits = self.conv3d_transpose_conv_1(x)
+        logits = self.conv3d_upsampling_1(x)
         return logits
 
 
@@ -133,7 +139,7 @@ if __name__ == "__main__":
 
         # Hyper-parameters of training.
         epochs = 20
-        learning_rate = 0.001
+        learning_rate = 0.0005
         batch_size = 32
 
         # Initialize train + validation + test data loader with given batch size.
@@ -219,6 +225,10 @@ if __name__ == "__main__":
             precision_list.append(precision)
             recall_list.append(recall)
             f1_list.append(f1_score)
+            accuracy_metric.reset()
+            precision_metric.reset()
+            recall_metric.reset()
+            f1_metric.reset()
 
         # TODO: save some predicted samples to pred/ folder (to visualize later)
         sigmoid = nn.Sigmoid()
