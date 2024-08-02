@@ -23,35 +23,100 @@ class SDFNeuralNetwork(nn.Module):
         self.conv3d_upsampling_1 = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
+            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            # TODO: add one more max pool + convolutional layer
             nn.Upsample(scale_factor=2, mode='trilinear'),
             nn.Upsample(scale_factor=2, mode='trilinear'),
             nn.Upsample(scale_factor=2, mode='trilinear')
         )
 
         self.conv3d_transpose_conv_1 = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=5, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
-            nn.Conv3d(in_channels=5, out_channels=10, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
-            nn.Conv3d(in_channels=10, out_channels=20, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.LeakyReLU(),
-            nn.ConvTranspose3d(in_channels=20, out_channels=10, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=10, out_channels=5, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=5, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
+            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            # TODO: remove max pooling layer at the end (or add one more convolutional layer
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=4, out_channels=2, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
+            nn.ConvTranspose3d(in_channels=2, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
         )
+
+        self.conv3d_deconvolution_1 = nn.Sequential(
+            nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True),
+            nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
+        )
+
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv2 = nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv3 = nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv4 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv6 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.deconv1 = nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1))
+        self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
+        self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
     def forward(self, x):
         logits = self.conv3d_upsampling_1(x)
+        index_list = []
+        size_list = []
+
+        # Convolution
+        # logits = self.conv1(x)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+        # size_list.append(logits.size())
+        # logits = self.conv2(logits)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+        # size_list.append(logits.size())
+        # logits = self.conv3(logits)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+        # size_list.append(logits.size())
+        # logits = self.conv4(logits)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+        # size_list.append(logits.size())
+        # logits = self.conv5(logits)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+        # size_list.append(logits.size())
+        # logits = self.conv6(logits)
+        # logits, indices = self.max_pool(logits)
+        # index_list.append(indices)
+
+        # Deconvolution
+        # logits = self.max_unpool(logits, index_list[5], output_size=size_list[4])
+        # logits = self.deconv1(logits)
+        # logits = self.max_unpool(logits, index_list[4], output_size=size_list[3])
+
         return logits
 
 
