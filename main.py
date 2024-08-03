@@ -28,10 +28,7 @@ class SDFNeuralNetwork(nn.Module):
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            # TODO: add one more max pool + convolutional layer
-            nn.Upsample(scale_factor=2, mode='trilinear'),
-            nn.Upsample(scale_factor=2, mode='trilinear'),
-            nn.Upsample(scale_factor=2, mode='trilinear')
+            nn.Upsample(scale_factor=8, mode='trilinear')
         )
 
         self.conv3d_transpose_conv_1 = nn.Sequential(
@@ -46,7 +43,6 @@ class SDFNeuralNetwork(nn.Module):
             nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            # TODO: remove max pooling layer at the end (or add one more convolutional layer
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
             nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
@@ -54,6 +50,18 @@ class SDFNeuralNetwork(nn.Module):
             nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
             nn.ConvTranspose3d(in_channels=4, out_channels=2, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
             nn.ConvTranspose3d(in_channels=2, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
+        )
+
+        self.conv3d_transpose_conv_2 = nn.Sequential(
+            nn.Conv3d(in_channels=1, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.ReLU(),
+            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
+            nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1)),
+            nn.ReLU(),
+            nn.ConvTranspose3d(in_channels=4, out_channels=1, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
         )
 
         self.conv3d_deconvolution_1 = nn.Sequential(
@@ -78,14 +86,22 @@ class SDFNeuralNetwork(nn.Module):
         self.conv4 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
         self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
         self.conv6 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.deconv1 = nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1))
+        self.conv7 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.deconv1 = nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(2, 2, 2), stride=(1, 1, 1))
+        self.deconv2 = nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.deconv3 = nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.deconv4 = nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.deconv5 = nn.ConvTranspose3d(in_channels=4, out_channels=2, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.deconv6 = nn.ConvTranspose3d(in_channels=2, out_channels=1, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.sigmoid = nn.Sigmoid()
+        self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
         self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
     def forward(self, x):
-        logits = self.conv3d_upsampling_1(x)
+        logits = self.conv3d_transpose_conv_2(x)
         index_list = []
-        size_list = []
+        size_list = [x.size()]
 
         # Convolution
         # logits = self.conv1(x)
@@ -111,11 +127,20 @@ class SDFNeuralNetwork(nn.Module):
         # logits = self.conv6(logits)
         # logits, indices = self.max_pool(logits)
         # index_list.append(indices)
+        # logits = self.conv7(logits)
 
         # Deconvolution
-        # logits = self.max_unpool(logits, index_list[5], output_size=size_list[4])
         # logits = self.deconv1(logits)
-        # logits = self.max_unpool(logits, index_list[4], output_size=size_list[3])
+        # logits = self.max_unpool(logits, index_list[4], output_size=size_list[4])
+        # logits = self.deconv2(logits)
+        # logits = self.max_unpool(logits, index_list[3], output_size=size_list[3])
+        # logits = self.deconv3(logits)
+        # logits = self.max_unpool(logits, index_list[2], output_size=size_list[2])
+        # logits = self.deconv4(logits)
+        # logits = self.max_unpool(logits, index_list[1], output_size=size_list[1])
+        # logits = self.deconv5(logits)
+        # logits = self.max_unpool(logits, index_list[0], output_size=size_list[0])
+        # logits = self.deconv6(logits)
 
         return logits
 
@@ -203,9 +228,9 @@ if __name__ == "__main__":
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
         # Hyper-parameters of training.
-        epochs = 20
-        learning_rate = 0.0005
-        batch_size = 32
+        epochs = 10
+        learning_rate = 0.001
+        batch_size = 16
 
         # Initialize train + validation + test data loader with given batch size.
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -269,10 +294,10 @@ if __name__ == "__main__":
 
                     # Update metrics (accuracy, precision, recall, f1) of test samples
                     prediction = sigmoid(prediction)
-                    accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
-                    precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
+                    accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                    precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                     recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                    f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)))
+                    f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
             accuracy = accuracy_metric.compute().item()
             precision = precision_metric.compute().item()
             recall = recall_metric.compute().item()
