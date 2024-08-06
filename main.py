@@ -55,8 +55,12 @@ class SDFNeuralNetwork(nn.Module):
         self.conv3d_transpose_conv_2 = nn.Sequential(
             nn.Conv3d(in_channels=1, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.ReLU(),
+            nn.Conv3d(in_channels=4, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.ReLU(),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
+            nn.ReLU(),
+            nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
             nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1)),
@@ -100,8 +104,8 @@ class SDFNeuralNetwork(nn.Module):
 
     def forward(self, x):
         logits = self.conv3d_transpose_conv_2(x)
-        index_list = []
-        size_list = [x.size()]
+        # index_list = []
+        # size_list = [x.size()]
 
         # Convolution
         # logits = self.conv1(x)
@@ -248,7 +252,8 @@ if __name__ == "__main__":
 
         print(f'=> Starting training...')
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-        loss_bce = nn.BCEWithLogitsLoss().to(device)
+        weights = torch.tensor([200])
+        loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
         train_losses = []
         test_losses = []
         accuracy_list = []
