@@ -27,9 +27,10 @@ class SDFVisualizer:
     def __init__(self, point_size):
         self.point_size = point_size
 
-    def plot_points(self, points_of_interest, curvatures):
+    def plot_points(self, points, points_of_interest, curvatures):
         arr_curv_pos = []
         arr_curv_neg = []
+        arr_curv_in = []
         size_p = np.shape(points_of_interest)[0]
         size_c = np.shape(curvatures)[0]
         print('=> Visualizing points using pyvista...')
@@ -37,6 +38,8 @@ class SDFVisualizer:
         for z in range(size_p):
             for y in range(size_p):
                 for x in range(size_p):
+                    # if points[z, y, x] <= 0.0:
+                    #     arr_curv_in.append((float(x), float(y), float(z)))
                     if points_of_interest[z, y, x]:
                         if size_c == 0:
                             arr_curv_neg.append((float(x), float(y), float(z)))
@@ -49,6 +52,9 @@ class SDFVisualizer:
         print('')
         plotter = pyvista.Plotter()
         plotter.add_mesh(pyvista.Box(bounds=(0.0, size_p, 0.0, size_p, 0.0, size_p)), color='red', opacity=0.01)
+        if len(arr_curv_in) != 0:
+            pc_curv = np.array(arr_curv_in)
+            plotter.add_mesh(pc_curv, color='g', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
         if len(arr_curv_pos) != 0:
             pc_curv = np.array(arr_curv_pos)
             plotter.add_mesh(pc_curv, color='y', point_size=self.point_size, render_points_as_spheres=True, opacity=1)

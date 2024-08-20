@@ -15,6 +15,9 @@ from SDFDataset import SDFDataset
 import argparse
 import time
 import matplotlib.pyplot as plt
+import itertools
+import trimesh
+import mesh_to_sdf
 
 
 class SDFNeuralNetwork(nn.Module):
@@ -155,6 +158,7 @@ if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the curvature of a signed distance field.')
+    parser.add_argument('-g', '--generate', help='Generate SDF samples from meshes.')
     parser.add_argument('-o', '--compute_one', help='Compute points of high curvature for one given bin file.')
     parser.add_argument('-a', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
@@ -179,12 +183,25 @@ if __name__ == "__main__":
     out_file_extension = '.bin'
 
     print('=> Parameters:')
+    print('   Generate samples:    ' + str(args.generate))
     print('   Compute one:         ' + str(args.compute_one))
     print('   Compute all:         ' + str(args.compute_all == 'Set'))
     print('   Visualize:           ' + str(args.visualize))
     print('   Train model:         ' + str(args.train == 'Set'))
     time.sleep(2)
     print('')
+
+    if args.generate is not None:
+        mesh = trimesh.load('in/sample000006_subdiv.ply')
+        x = np.linspace(0, 64, 64)
+        y = np.linspace(0, 64, 64)
+        z = np.linspace(0, 64, 64)
+        points = np.array(list(itertools.product(x, y, z)))
+        sdf = mesh_to_sdf.mesh_to_sdf(mesh, points, surface_point_method='scan', sign_method='depth')
+        file = open('samples/sample000006_subdiv.bin', 'wb')
+        sdf.tofile(file)
+        file.close()
+        print('')
 
     if args.compute_one is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.compute_one).zfill(6)}{in_file_postfix}{in_file_extension}'
@@ -215,15 +232,15 @@ if __name__ == "__main__":
         sdf_reader = SDFReader(i_path)
         sdf_visualizer = SDFVisualizer(point_size)
         folder = i_path.split('/')[0]
-        if folder == 'in':
+        if folder == 'in' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
-            sdf_visualizer.plot_points(points_of_interest, curvatures)
+            sdf_visualizer.plot_points(points, points_of_interest, curvatures)
         elif folder == 'out' or folder == 'pred':
             points_of_interest = sdf_reader.read_points_from_bin(True)
-            sdf_visualizer.plot_points(points_of_interest, np.zeros(0))
+            sdf_visualizer.plot_points(points_of_interest, points_of_interest, np.zeros(0))
         else:
             print(f'Invalid folder \'{folder}\' found.')
 

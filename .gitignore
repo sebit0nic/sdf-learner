@@ -2,5 +2,6 @@ conf/
 in/
 out/
 pred/
+samples/
 .idea/
 __pycache__/
