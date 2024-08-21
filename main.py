@@ -158,9 +158,11 @@ if __name__ == "__main__":
     print("========================================SDF Learner========================================================")
     parser = argparse.ArgumentParser(prog='SDF Learner',
                                      description='Learns the curvature of a signed distance field.')
-    parser.add_argument('-g', '--generate', help='Generate SDF samples from meshes.')
-    parser.add_argument('-o', '--compute_one', help='Compute points of high curvature for one given bin file.')
-    parser.add_argument('-a', '--compute_all', action='store', const='Set', nargs='?',
+    parser.add_argument('-go', '--generate_one', help='Generate SDF samples from meshes.')
+    parser.add_argument('-ga', '--generate_all', action='store', const='Set', nargs='?',
+                        help='Generate SDF samples for all meshes inside folder.')
+    parser.add_argument('-co', '--compute_one', help='Compute points of high curvature for one given bin file.')
+    parser.add_argument('-ca', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
     parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-t', '--train', action='store', const='Set', nargs='?',
@@ -168,22 +170,28 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     point_size = 5
-    tolerance = 2000
-    percentage = 0.05
+    tolerance = 0.5
+    lower_percentile = 99.5
+    upper_percentile = 100.0
     epsilon = 0.1
-    start_sample_num = 0
+    start_sample_num = 300
     sample_num = 1000
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
-    in_file_extension = '.bin'
+    in_file_extension = '.ply'
     out_folder = 'out/'
     out_file_prefix = 'sample'
     out_file_postfix = ''
     out_file_extension = '.bin'
+    sample_folder = 'samples/'
+    sample_file_prefix = 'sample'
+    sample_file_postfix = '_subdiv'
+    sample_file_extension = '.bin'
 
     print('=> Parameters:')
-    print('   Generate samples:    ' + str(args.generate))
+    print('   Generate one:        ' + str(args.generate_one))
+    print('   Generate all:        ' + str(args.generate_all == 'Set'))
     print('   Compute one:         ' + str(args.compute_one))
     print('   Compute all:         ' + str(args.compute_all == 'Set'))
     print('   Visualize:           ' + str(args.visualize))
@@ -191,24 +199,41 @@ if __name__ == "__main__":
     time.sleep(2)
     print('')
 
-    if args.generate is not None:
-        mesh = trimesh.load('in/sample000006_subdiv.ply')
-        x = np.linspace(0, 64, 64)
-        y = np.linspace(0, 64, 64)
-        z = np.linspace(0, 64, 64)
+    if args.generate_one is not None:
+        i_path = f'{in_folder}{in_file_prefix}{str(args.generate_one).zfill(6)}{in_file_postfix}{in_file_extension}'
+        o_path = f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+        mesh = trimesh.load(i_path)
+        x = np.linspace(0, 63, 64)
+        y = np.linspace(0, 63, 64)
+        z = np.linspace(0, 63, 64)
         points = np.array(list(itertools.product(x, y, z)))
+        print('=> Generating sample out of mesh...')
         sdf = mesh_to_sdf.mesh_to_sdf(mesh, points, surface_point_method='scan', sign_method='depth')
-        file = open('samples/sample000006_subdiv.bin', 'wb')
+        file = open(o_path, 'wb')
         sdf.tofile(file)
         file.close()
-        print('')
+
+    if args.generate_all is not None:
+        x = np.linspace(0, 63, 64)
+        y = np.linspace(0, 63, 64)
+        z = np.linspace(0, 63, 64)
+        points = np.array(list(itertools.product(x, y, z)))
+        for i in range(start_sample_num, sample_num):
+            print(f'=> Generating sample {i + 1}')
+            i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
+            o_path = f'{sample_folder}{sample_file_prefix}{str(i).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+            mesh = trimesh.load(i_path)
+            sdf = mesh_to_sdf.mesh_to_sdf(mesh, points, surface_point_method='scan', sign_method='depth')
+            file = open(o_path, 'wb')
+            sdf.tofile(file)
+            file.close()
 
     if args.compute_one is not None:
-        i_path = f'{in_folder}{in_file_prefix}{str(args.compute_one).zfill(6)}{in_file_postfix}{in_file_extension}'
+        i_path = f'{sample_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}{sample_file_extension}'
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
-        sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
+        sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
         curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
         points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
         sdf_writer = SDFWriter(o_path)
@@ -217,11 +242,11 @@ if __name__ == "__main__":
     if args.compute_all is not None:
         for i in range(start_sample_num, sample_num):
             print(f'=> Computing sample {i + 1}')
-            i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
+            i_path = f'{sample_folder}{sample_file_prefix}{str(i).zfill(6)}{sample_file_postfix}{sample_file_extension}'
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
             points = sdf_reader.read_points_from_bin(False, False)
-            sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
+            sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points, False)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples, False)
             sdf_writer = SDFWriter(o_path)
@@ -234,7 +259,7 @@ if __name__ == "__main__":
         folder = i_path.split('/')[0]
         if folder == 'in' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
-            sdf_curvature = SDFCurvature(epsilon, tolerance, percentage)
+            sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
             sdf_visualizer.plot_points(points, points_of_interest, curvatures)

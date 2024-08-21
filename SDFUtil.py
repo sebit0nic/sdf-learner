@@ -3,10 +3,11 @@ import numpy as np
 
 
 class SDFCurvature:
-    def __init__(self, epsilon, tolerance, percentage):
+    def __init__(self, epsilon, tolerance, lower_percentile, upper_percentile):
         self.epsilon = epsilon
         self.tolerance = tolerance
-        self.percentage = percentage
+        self.lower_percentile = lower_percentile
+        self.upper_percentile = upper_percentile
 
     def calculate_curvature(self, points, debug=True):
         if debug:
@@ -20,6 +21,12 @@ class SDFCurvature:
                 for x in range(size):
                     # Disregard points on the borders
                     if x - 1 < 0 or x + 1 >= size or y - 1 < 0 or y + 1 >= size or z - 1 < 0 or z + 1 >= size:
+                        continue
+
+                    # Disregard points outside of tolerance distance to surface
+                    if points[z, y, x] < -self.tolerance or points[z, y, x] > self.tolerance:
+                        sorted_points.append((z, y, x, 0))
+                        curvatures[z, y, x] = 0
                         continue
 
                     # Interpolate x
@@ -70,12 +77,12 @@ class SDFCurvature:
         size = np.shape(points)[0]
         points_of_interest = np.zeros((size, size, size), dtype=np.int32)
         s = np.array(curv_list)
-        p = np.percentile(s, np.array([25, 98.5, 99]))
+        p = np.percentile(s, np.array([self.lower_percentile, self.upper_percentile]))
         if debug:
             print(f'   Percentiles: {p}')
             print('')
         for i in range(len(sorted_points)):
-            if p[1] < np.abs(sorted_points[i][3]) < p[2]:
+            if p[0] < np.abs(sorted_points[i][3]) < p[1]:
                 z = sorted_points[i][0]
                 y = sorted_points[i][1]
                 x = sorted_points[i][2]
