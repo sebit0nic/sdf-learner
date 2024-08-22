@@ -87,68 +87,42 @@ class SDFNeuralNetwork(nn.Module):
             nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
         )
 
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv2 = nn.Conv3d(in_channels=4, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
         self.conv3 = nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-        self.deconv1 = nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(2, 2, 2), stride=(1, 1, 1))
-        self.deconv2 = nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-        self.deconv3 = nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-        self.deconv4 = nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-        self.deconv5 = nn.ConvTranspose3d(in_channels=4, out_channels=2, kernel_size=(1, 1, 1), stride=(1, 1, 1))
-        self.deconv6 = nn.ConvTranspose3d(in_channels=2, out_channels=1, kernel_size=(1, 1, 1), stride=(1, 1, 1))
+        self.conv4 = nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv5 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv6 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv7 = nn.Conv3d(in_channels=16, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv8 = nn.Conv3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv9 = nn.Conv3d(in_channels=4, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.deconv1 = nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
+        self.deconv2 = nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.sigmoid = nn.Sigmoid()
         self.ReLU = nn.ReLU()
+        self.leakyReLU = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
-        self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
     def forward(self, x):
-        logits = self.conv3d_transpose_conv_2(x)
-        # index_list = []
-        # size_list = [x.size()]
-
-        # Convolution
-        # logits = self.conv1(x)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # size_list.append(logits.size())
-        # logits = self.conv2(logits)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # size_list.append(logits.size())
-        # logits = self.conv3(logits)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # size_list.append(logits.size())
-        # logits = self.conv4(logits)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # size_list.append(logits.size())
-        # logits = self.conv5(logits)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # size_list.append(logits.size())
-        # logits = self.conv6(logits)
-        # logits, indices = self.max_pool(logits)
-        # index_list.append(indices)
-        # logits = self.conv7(logits)
-
-        # Deconvolution
-        # logits = self.deconv1(logits)
-        # logits = self.max_unpool(logits, index_list[4], output_size=size_list[4])
-        # logits = self.deconv2(logits)
-        # logits = self.max_unpool(logits, index_list[3], output_size=size_list[3])
-        # logits = self.deconv3(logits)
-        # logits = self.max_unpool(logits, index_list[2], output_size=size_list[2])
-        # logits = self.deconv4(logits)
-        # logits = self.max_unpool(logits, index_list[1], output_size=size_list[1])
-        # logits = self.deconv5(logits)
-        # logits = self.max_unpool(logits, index_list[0], output_size=size_list[0])
-        # logits = self.deconv6(logits)
-
+        # logits = self.conv3d_transpose_conv_1(x)
+        logits = self.conv1(x)
+        logits = self.conv2(logits)
+        skip1 = torch.clone(logits)
+        logits, _ = self.max_pool(logits)
+        logits = self.conv3(logits)
+        logits = self.conv4(logits)
+        skip2 = torch.clone(logits)
+        logits, _ = self.max_pool(logits)
+        logits = self.conv5(logits)
+        logits = self.conv6(logits)
+        logits = self.conv6(logits)
+        logits = self.deconv1(logits)
+        logits = torch.cat((logits, skip2), dim=1)
+        logits = self.conv7(logits)
+        logits = self.deconv2(logits)
+        logits = torch.cat((logits, skip1), dim=1)
+        logits = self.conv8(logits)
+        logits = self.conv9(logits)
         return logits
 
 
@@ -174,8 +148,9 @@ if __name__ == "__main__":
     lower_percentile = 99.5
     upper_percentile = 100.0
     epsilon = 0.1
-    start_sample_num = 300
+    start_sample_num = 0
     sample_num = 1000
+    sample_dimension = 64
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -203,9 +178,9 @@ if __name__ == "__main__":
         i_path = f'{in_folder}{in_file_prefix}{str(args.generate_one).zfill(6)}{in_file_postfix}{in_file_extension}'
         o_path = f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}{sample_file_extension}'
         mesh = trimesh.load(i_path)
-        x = np.linspace(0, 63, 64)
-        y = np.linspace(0, 63, 64)
-        z = np.linspace(0, 63, 64)
+        x = np.linspace(0, sample_dimension - 1, sample_dimension)
+        y = np.linspace(0, sample_dimension - 1, sample_dimension)
+        z = np.linspace(0, sample_dimension - 1, sample_dimension)
         points = np.array(list(itertools.product(x, y, z)))
         print('=> Generating sample out of mesh...')
         sdf = mesh_to_sdf.mesh_to_sdf(mesh, points, surface_point_method='scan', sign_method='depth')
@@ -214,9 +189,9 @@ if __name__ == "__main__":
         file.close()
 
     if args.generate_all is not None:
-        x = np.linspace(0, 63, 64)
-        y = np.linspace(0, 63, 64)
-        z = np.linspace(0, 63, 64)
+        x = np.linspace(0, sample_dimension - 1, sample_dimension)
+        y = np.linspace(0, sample_dimension - 1, sample_dimension)
+        z = np.linspace(0, sample_dimension - 1, sample_dimension)
         points = np.array(list(itertools.product(x, y, z)))
         for i in range(start_sample_num, sample_num):
             print(f'=> Generating sample {i + 1}')
@@ -274,7 +249,7 @@ if __name__ == "__main__":
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
         # Hyper-parameters of training.
-        epochs = 10
+        epochs = 20
         learning_rate = 0.001
         batch_size = 16
 
@@ -318,7 +293,7 @@ if __name__ == "__main__":
                 optimizer.step()
                 optimizer.zero_grad()
 
-                print(f'   BCE loss batch ({batch + 1}): {train_loss.item()}')
+                # print(f'   BCE loss batch ({batch + 1}): {train_loss.item()}')
             train_losses.append(train_loss.item())
 
             # Test loop
@@ -356,7 +331,7 @@ if __name__ == "__main__":
                   f'    - Recall:    {recall * 100:.2f}% ({recall})\n'
                   f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n'
                   f'    - BCE loss:  {test_loss}\n')
-            print('')
+            # print('')
             test_losses.append(test_loss)
             accuracy_list.append(accuracy)
             precision_list.append(precision)
