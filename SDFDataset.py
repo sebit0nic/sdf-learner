@@ -10,6 +10,7 @@ class SDFDataset(Dataset):
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
+        # TODO: don't load everything in at the start
         in_reader = SDFReader(f'{input_folder}')
         self.in_tensor = in_reader.read_dataset_from_bin(device, sample_num, False)
         out_reader = SDFReader(f'{output_folder}')

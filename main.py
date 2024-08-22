@@ -103,26 +103,40 @@ class SDFNeuralNetwork(nn.Module):
         self.leakyReLU = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
 
-    def forward(self, x):
-        # logits = self.conv3d_transpose_conv_1(x)
+    def u_net(self, x):
         logits = self.conv1(x)
+        logits = self.ReLU(logits)
         logits = self.conv2(logits)
+        logits = self.ReLU(logits)
         skip1 = torch.clone(logits)
         logits, _ = self.max_pool(logits)
         logits = self.conv3(logits)
+        logits = self.ReLU(logits)
         logits = self.conv4(logits)
+        logits = self.ReLU(logits)
         skip2 = torch.clone(logits)
         logits, _ = self.max_pool(logits)
         logits = self.conv5(logits)
+        logits = self.ReLU(logits)
         logits = self.conv6(logits)
+        logits = self.ReLU(logits)
         logits = self.conv6(logits)
+        logits = self.ReLU(logits)
         logits = self.deconv1(logits)
         logits = torch.cat((logits, skip2), dim=1)
         logits = self.conv7(logits)
+        logits = self.ReLU(logits)
         logits = self.deconv2(logits)
         logits = torch.cat((logits, skip1), dim=1)
         logits = self.conv8(logits)
+        logits = self.ReLU(logits)
         logits = self.conv9(logits)
+
+        return logits
+
+    def forward(self, x):
+        logits = self.conv3d_upsampling_1(x)
+
         return logits
 
 
@@ -151,6 +165,7 @@ if __name__ == "__main__":
     start_sample_num = 0
     sample_num = 1000
     sample_dimension = 64
+    prediction_num = 3
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -163,6 +178,8 @@ if __name__ == "__main__":
     sample_file_prefix = 'sample'
     sample_file_postfix = '_subdiv'
     sample_file_extension = '.bin'
+    pred_folder = 'pred/'
+    pred_file_extension = '.bin'
 
     print('=> Parameters:')
     print('   Generate one:        ' + str(args.generate_one))
@@ -245,12 +262,12 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
-        full_dataset = SDFDataset('in\\', 'out\\', sample_num)
+        full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
         # Hyper-parameters of training.
         epochs = 20
-        learning_rate = 0.001
+        learning_rate = 0.0005
         batch_size = 16
 
         # Initialize train + validation + test data loader with given batch size.
@@ -293,7 +310,6 @@ if __name__ == "__main__":
                 optimizer.step()
                 optimizer.zero_grad()
 
-                # print(f'   BCE loss batch ({batch + 1}): {train_loss.item()}')
             train_losses.append(train_loss.item())
 
             # Test loop
@@ -325,13 +341,13 @@ if __name__ == "__main__":
             recall = recall_metric.compute().item()
             f1_score = f1_metric.compute().item()
             test_loss /= len(test_dataset)
+            # TODO: log this output to file in pred/ folder
             print(f'   => Test set summary:\n'
                   f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n'
                   f'    - Precision: {precision * 100:.2f}% ({precision})\n'
                   f'    - Recall:    {recall * 100:.2f}% ({recall})\n'
                   f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n'
                   f'    - BCE loss:  {test_loss}\n')
-            # print('')
             test_losses.append(test_loss)
             accuracy_list.append(accuracy)
             precision_list.append(precision)
@@ -342,28 +358,33 @@ if __name__ == "__main__":
             recall_metric.reset()
             f1_metric.reset()
 
-        # TODO: save some predicted samples to pred/ folder (to visualize later)
+        # Save some predicted samples to pred/ folder (to visualize later)
         sigmoid = nn.Sigmoid()
-        prediction = sigmoid(model(full_dataset[0][0].reshape((1, 1, 64, 64, 64))))
-        sdf_visualizer = SDFVisualizer(point_size)
-        sdf_visualizer.plot_tensor(prediction.squeeze(), dim_x)
+        date = time.strftime('%Y%m%d%H%M')
+        for i in range(prediction_num):
+            o_path = f'{pred_folder}{date}_{str(i).zfill(6)}{pred_file_extension}'
+            prediction = sigmoid(model(full_dataset[i][0].reshape((1, 1, 64, 64, 64))))
+            sdf_writer = SDFWriter(o_path)
+            prediction_conv = prediction.squeeze().round().numpy(force=True).astype(np.int32)
+            sdf_writer.write_points(prediction_conv)
 
-        # plt.plot(accuracy_list, color='blue', label='Accuracy')
+        # plt.plot(accuracy_list, color='yellow', label='Accuracy')
         plt.plot(precision_list, color='green', label='Precision')
         plt.plot(recall_list, color='blue', label='Recall')
         plt.plot(f1_list, color='red', label='F1 Score')
         plt.xlabel('Epochs')
         plt.ylabel('Metric')
         plt.title('Metrics over epochs')
-        # plt.yticks([0, 0.25, 0.5, 0.75, 1.0])
         plt.legend()
+        plt.savefig(f'{pred_folder}{date}_metrics.png')
         plt.show()
 
         plt.plot(train_losses, color='blue')
         plt.plot(test_losses, color='green')
         plt.xlabel('Epochs')
-        plt.ylabel('Loss / accuracy')
-        plt.title('BCE loss / test accuracy over epochs')
+        plt.ylabel('Loss')
+        plt.title('BCE loss over epochs')
+        plt.savefig(f'{pred_folder}{date}_loss.png')
         plt.show()
 
     end_time = time.perf_counter()
