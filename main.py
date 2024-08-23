@@ -261,136 +261,139 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
-        date = time.strftime('%Y%m%d%H%M')
+        iterations = 10
+        for iteration in range(iterations):
+            date = time.strftime('%Y%m%d%H%M')
 
-        full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
-        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
+            full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
+            train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
-        # Hyper-parameters of training.
-        epochs = 25
-        learning_rate = 0.0005
-        batch_size = 16
+            # Hyper-parameters of training.
+            epochs = 25
+            learning_rate = 0.0005
+            batch_size = 16
 
-        # Initialize train + validation + test data loader with given batch size.
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+            # Initialize train + validation + test data loader with given batch size.
+            train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
-        # Get dimension of input data (most likely always 64 * 64 * 64).
-        train_features, _ = next(iter(train_dataloader))
-        dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
+            # Get dimension of input data (most likely always 64 * 64 * 64).
+            train_features, _ = next(iter(train_dataloader))
+            dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
 
-        # Check if we have GPU available to run tensors on.
-        device = 'cpu'
-        if torch.cuda.is_available():
-            device = 'cuda'
-        model = SDFNeuralNetwork().to(device)
+            # Check if we have GPU available to run tensors on.
+            device = 'cpu'
+            if torch.cuda.is_available():
+                device = 'cuda'
+            model = SDFNeuralNetwork().to(device)
 
-        print(f'=> Starting training...')
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-        weights = torch.tensor([200])
-        loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-        train_losses = []
-        test_losses = []
-        accuracy_list = []
-        precision_list = []
-        recall_list = []
-        f1_list = []
-        with open(f'{pred_folder}{date}_log.txt', 'w') as log_file:
-            for t in range(epochs):
-                print(f'=> Epoch ({t + 1})')
+            print(f'=> Starting training {iteration + 1}...')
+            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+            # weights = torch.tensor([200])
+            # loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
+            loss_bce = nn.BCEWithLogitsLoss().to(device)
+            train_losses = []
+            test_losses = []
+            accuracy_list = []
+            precision_list = []
+            recall_list = []
+            f1_list = []
+            with open(f'{pred_folder}{date}_log.txt', 'w') as log_file:
+                for t in range(epochs):
+                    print(f'=> Epoch ({t + 1})')
 
-                # Training loop
-                model.train()
-                train_loss = 0
-                for batch, (X, y) in enumerate(train_dataloader):
-                    # Compute prediction of current model and compute loss
-                    prediction = model(X)
-                    train_loss = loss_bce(prediction, y)
+                    # Training loop
+                    model.train()
+                    train_loss = 0
+                    for batch, (X, y) in enumerate(train_dataloader):
+                        # Compute prediction of current model and compute loss
+                        prediction = model(X)
+                        train_loss = loss_bce(prediction, y)
 
-                    # Do backpropagation
-                    train_loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad()
+                        # Do backpropagation
+                        train_loss.backward()
+                        optimizer.step()
+                        optimizer.zero_grad()
 
-                train_losses.append(train_loss.item())
+                    train_losses.append(train_loss.item())
 
-                # Test loop
-                model.eval()
-                test_loss = 0
-                accuracy = 0.0
-                precision = 0.0
-                recall = 0.0
-                f1_score = 0.0
-                accuracy_metric = BinaryAccuracy().to(device)
-                precision_metric = BinaryPrecision().to(device)
-                recall_metric = BinaryRecall().to(device)
-                f1_metric = BinaryF1Score().to(device)
-                sigmoid = nn.Sigmoid().to(device)
-                with torch.no_grad():
-                    for X, y in test_dataset:
-                        # Predict output of one test sample
-                        prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
-                        test_loss += loss_bce(prediction, y.squeeze()).item()
+                    # Test loop
+                    model.eval()
+                    test_loss = 0
+                    accuracy = 0.0
+                    precision = 0.0
+                    recall = 0.0
+                    f1_score = 0.0
+                    accuracy_metric = BinaryAccuracy().to(device)
+                    precision_metric = BinaryPrecision().to(device)
+                    recall_metric = BinaryRecall().to(device)
+                    f1_metric = BinaryF1Score().to(device)
+                    sigmoid = nn.Sigmoid().to(device)
+                    with torch.no_grad():
+                        for X, y in test_dataset:
+                            # Predict output of one test sample
+                            prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
+                            test_loss += loss_bce(prediction, y.squeeze()).item()
 
-                        # Update metrics (accuracy, precision, recall, f1) of test samples
-                        prediction = sigmoid(prediction)
-                        accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                        precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                        recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                        f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                accuracy = accuracy_metric.compute().item()
-                precision = precision_metric.compute().item()
-                recall = recall_metric.compute().item()
-                f1_score = f1_metric.compute().item()
-                test_loss /= len(test_dataset)
+                            # Update metrics (accuracy, precision, recall, f1) of test samples
+                            prediction = sigmoid(prediction)
+                            accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                            precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                            recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                            f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                    accuracy = accuracy_metric.compute().item()
+                    precision = precision_metric.compute().item()
+                    recall = recall_metric.compute().item()
+                    f1_score = f1_metric.compute().item()
+                    test_loss /= len(test_dataset)
 
-                # Output metrics + write to log file for later
-                log_str = f'   => Test set summary:\n' \
-                          f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n' \
-                          f'    - Precision: {precision * 100:.2f}% ({precision})\n' \
-                          f'    - Recall:    {recall * 100:.2f}% ({recall})\n' \
-                          f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n' \
-                          f'    - BCE loss:  {test_loss}\n'
-                print(log_str)
-                log_file.write(log_str)
+                    # Output metrics + write to log file for later
+                    log_str = f'   => Test set summary:\n' \
+                              f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n' \
+                              f'    - Precision: {precision * 100:.2f}% ({precision})\n' \
+                              f'    - Recall:    {recall * 100:.2f}% ({recall})\n' \
+                              f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n' \
+                              f'    - BCE loss:  {test_loss}\n'
+                    print(log_str)
+                    log_file.write(log_str)
 
-                test_losses.append(test_loss)
-                accuracy_list.append(accuracy)
-                precision_list.append(precision)
-                recall_list.append(recall)
-                f1_list.append(f1_score)
-                accuracy_metric.reset()
-                precision_metric.reset()
-                recall_metric.reset()
-                f1_metric.reset()
+                    test_losses.append(test_loss)
+                    accuracy_list.append(accuracy)
+                    precision_list.append(precision)
+                    recall_list.append(recall)
+                    f1_list.append(f1_score)
+                    accuracy_metric.reset()
+                    precision_metric.reset()
+                    recall_metric.reset()
+                    f1_metric.reset()
 
-        # Save some predicted samples to pred/ folder (to visualize later)
-        sigmoid = nn.Sigmoid()
-        for i in range(prediction_num):
-            o_path = f'{pred_folder}{date}_{str(i).zfill(6)}{pred_file_extension}'
-            prediction = sigmoid(model(full_dataset[i][0].reshape((1, 1, 64, 64, 64))))
-            sdf_writer = SDFWriter(o_path)
-            prediction_conv = prediction.squeeze().round().numpy(force=True).astype(np.int32)
-            sdf_writer.write_points(prediction_conv)
+            # Save some predicted samples to pred/ folder (to visualize later)
+            sigmoid = nn.Sigmoid()
+            for i in range(prediction_num):
+                o_path = f'{pred_folder}{date}_{str(i).zfill(6)}{pred_file_extension}'
+                prediction = sigmoid(model(full_dataset[i][0].reshape((1, 1, 64, 64, 64))))
+                sdf_writer = SDFWriter(o_path)
+                prediction_conv = prediction.squeeze().round().numpy(force=True).astype(np.int32)
+                sdf_writer.write_points(prediction_conv)
 
-        # plt.plot(accuracy_list, color='yellow', label='Accuracy')
-        plt.plot(precision_list, color='green', label='Precision')
-        plt.plot(recall_list, color='blue', label='Recall')
-        plt.plot(f1_list, color='red', label='F1 Score')
-        plt.xlabel('Epochs')
-        plt.ylabel('Metric')
-        plt.title('Metrics over epochs')
-        plt.legend()
-        plt.savefig(f'{pred_folder}{date}_metrics.png')
-        plt.show()
+            # plt.plot(accuracy_list, color='yellow', label='Accuracy')
+            plt.plot(precision_list, color='green', label='Precision')
+            plt.plot(recall_list, color='blue', label='Recall')
+            plt.plot(f1_list, color='red', label='F1 Score')
+            plt.xlabel('Epochs')
+            plt.ylabel('Metric')
+            plt.title('Metrics over epochs')
+            plt.legend()
+            plt.savefig(f'{pred_folder}{date}_metrics.png')
+            plt.show()
 
-        plt.plot(train_losses, color='blue')
-        plt.plot(test_losses, color='green')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.title('BCE loss over epochs')
-        plt.savefig(f'{pred_folder}{date}_loss.png')
-        plt.show()
+            plt.plot(train_losses, color='blue')
+            plt.plot(test_losses, color='green')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.title('BCE loss over epochs')
+            plt.savefig(f'{pred_folder}{date}_loss.png')
+            plt.show()
 
     end_time = time.perf_counter()
     print(f'\nFinished in {int((end_time - start_time) / 60)} minutes, {(end_time - start_time) % 60:.4f} seconds.')
