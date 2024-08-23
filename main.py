@@ -87,23 +87,23 @@ class SDFNeuralNetwork(nn.Module):
             nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
         )
 
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=4, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=16, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=4, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.deconv1 = nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.deconv2 = nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv2 = nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv3 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv4 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv6 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv7 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv8 = nn.Conv3d(in_channels=24, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.conv9 = nn.Conv3d(in_channels=8, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
+        self.deconv1 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
+        self.deconv2 = nn.ConvTranspose3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.sigmoid = nn.Sigmoid()
         self.ReLU = nn.ReLU()
         self.leakyReLU = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
 
-    def u_net(self, x):
+    def u_net_1(self, x):
         logits = self.conv1(x)
         logits = self.ReLU(logits)
         logits = self.conv2(logits)
@@ -135,8 +135,7 @@ class SDFNeuralNetwork(nn.Module):
         return logits
 
     def forward(self, x):
-        logits = self.conv3d_upsampling_1(x)
-
+        logits = self.u_net_1(x)
         return logits
 
 
@@ -262,11 +261,13 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
+        date = time.strftime('%Y%m%d%H%M')
+
         full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
         train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
         # Hyper-parameters of training.
-        epochs = 20
+        epochs = 25
         learning_rate = 0.0005
         batch_size = 16
 
@@ -294,73 +295,77 @@ if __name__ == "__main__":
         precision_list = []
         recall_list = []
         f1_list = []
-        for t in range(epochs):
-            print(f'=> Epoch ({t + 1})')
+        with open(f'{pred_folder}{date}_log.txt', 'w') as log_file:
+            for t in range(epochs):
+                print(f'=> Epoch ({t + 1})')
 
-            # Training loop
-            model.train()
-            train_loss = 0
-            for batch, (X, y) in enumerate(train_dataloader):
-                # Compute prediction of current model and compute loss
-                prediction = model(X)
-                train_loss = loss_bce(prediction, y)
+                # Training loop
+                model.train()
+                train_loss = 0
+                for batch, (X, y) in enumerate(train_dataloader):
+                    # Compute prediction of current model and compute loss
+                    prediction = model(X)
+                    train_loss = loss_bce(prediction, y)
 
-                # Do backpropagation
-                train_loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+                    # Do backpropagation
+                    train_loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
 
-            train_losses.append(train_loss.item())
+                train_losses.append(train_loss.item())
 
-            # Test loop
-            model.eval()
-            test_loss = 0
-            accuracy = 0.0
-            precision = 0.0
-            recall = 0.0
-            f1_score = 0.0
-            accuracy_metric = BinaryAccuracy().to(device)
-            precision_metric = BinaryPrecision().to(device)
-            recall_metric = BinaryRecall().to(device)
-            f1_metric = BinaryF1Score().to(device)
-            sigmoid = nn.Sigmoid().to(device)
-            with torch.no_grad():
-                for X, y in test_dataset:
-                    # Predict output of one test sample
-                    prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
-                    test_loss += loss_bce(prediction, y.squeeze()).item()
+                # Test loop
+                model.eval()
+                test_loss = 0
+                accuracy = 0.0
+                precision = 0.0
+                recall = 0.0
+                f1_score = 0.0
+                accuracy_metric = BinaryAccuracy().to(device)
+                precision_metric = BinaryPrecision().to(device)
+                recall_metric = BinaryRecall().to(device)
+                f1_metric = BinaryF1Score().to(device)
+                sigmoid = nn.Sigmoid().to(device)
+                with torch.no_grad():
+                    for X, y in test_dataset:
+                        # Predict output of one test sample
+                        prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
+                        test_loss += loss_bce(prediction, y.squeeze()).item()
 
-                    # Update metrics (accuracy, precision, recall, f1) of test samples
-                    prediction = sigmoid(prediction)
-                    accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                    precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                    recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                    f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-            accuracy = accuracy_metric.compute().item()
-            precision = precision_metric.compute().item()
-            recall = recall_metric.compute().item()
-            f1_score = f1_metric.compute().item()
-            test_loss /= len(test_dataset)
-            # TODO: log this output to file in pred/ folder
-            print(f'   => Test set summary:\n'
-                  f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n'
-                  f'    - Precision: {precision * 100:.2f}% ({precision})\n'
-                  f'    - Recall:    {recall * 100:.2f}% ({recall})\n'
-                  f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n'
-                  f'    - BCE loss:  {test_loss}\n')
-            test_losses.append(test_loss)
-            accuracy_list.append(accuracy)
-            precision_list.append(precision)
-            recall_list.append(recall)
-            f1_list.append(f1_score)
-            accuracy_metric.reset()
-            precision_metric.reset()
-            recall_metric.reset()
-            f1_metric.reset()
+                        # Update metrics (accuracy, precision, recall, f1) of test samples
+                        prediction = sigmoid(prediction)
+                        accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                        precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                        recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                        f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                accuracy = accuracy_metric.compute().item()
+                precision = precision_metric.compute().item()
+                recall = recall_metric.compute().item()
+                f1_score = f1_metric.compute().item()
+                test_loss /= len(test_dataset)
+
+                # Output metrics + write to log file for later
+                log_str = f'   => Test set summary:\n' \
+                          f'    - Accuracy:  {accuracy * 100:.2f}% ({accuracy})\n' \
+                          f'    - Precision: {precision * 100:.2f}% ({precision})\n' \
+                          f'    - Recall:    {recall * 100:.2f}% ({recall})\n' \
+                          f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n' \
+                          f'    - BCE loss:  {test_loss}\n'
+                print(log_str)
+                log_file.write(log_str)
+
+                test_losses.append(test_loss)
+                accuracy_list.append(accuracy)
+                precision_list.append(precision)
+                recall_list.append(recall)
+                f1_list.append(f1_score)
+                accuracy_metric.reset()
+                precision_metric.reset()
+                recall_metric.reset()
+                f1_metric.reset()
 
         # Save some predicted samples to pred/ folder (to visualize later)
         sigmoid = nn.Sigmoid()
-        date = time.strftime('%Y%m%d%H%M')
         for i in range(prediction_num):
             o_path = f'{pred_folder}{date}_{str(i).zfill(6)}{pred_file_extension}'
             prediction = sigmoid(model(full_dataset[i][0].reshape((1, 1, 64, 64, 64))))

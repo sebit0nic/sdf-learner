@@ -66,6 +66,22 @@ class SDFReader:
         # Finally, convert array to tensor.
         return torch.as_tensor(points, dtype=torch.float32, device=device)
 
+    def read_sample_from_bin(self, device, item, is_label):
+        if is_label:
+            file_path = f'{os.getcwd()}\\{self.file_name}sample{item:06d}.bin'
+        else:
+            file_path = f'{os.getcwd()}\\{self.file_name}sample{item:06d}_subdiv.bin'
+        file = open(file_path, 'rb')
+        size = self.compute_dimensions_from_file(file)
+        points = np.zeros((1, size, size, size))
+        if is_label:
+            data = np.fromfile(file, dtype=np.int32)
+        else:
+            data = np.fromfile(file, dtype=np.float32)
+        points[0] = np.copy(data).reshape((size, size, size))
+        file.close()
+        return torch.as_tensor(points, dtype=torch.float32, device=device)
+
 
 class SDFWriter:
     def __init__(self, file_name):
