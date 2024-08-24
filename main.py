@@ -20,6 +20,7 @@ import trimesh
 import mesh_to_sdf
 
 
+# TODO: use multiple classes instead of one (for printing of model)
 class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
@@ -103,7 +104,7 @@ class SDFNeuralNetwork(nn.Module):
         self.leakyReLU = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
 
-    def u_net_1(self, x):
+    def u_net(self, x):
         logits = self.conv1(x)
         logits = self.ReLU(logits)
         logits = self.conv2(logits)
@@ -135,7 +136,7 @@ class SDFNeuralNetwork(nn.Module):
         return logits
 
     def forward(self, x):
-        logits = self.u_net_1(x)
+        logits = self.u_net(x)
         return logits
 
 
@@ -261,7 +262,7 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
-        iterations = 10
+        iterations = 5
         for iteration in range(iterations):
             date = time.strftime('%Y%m%d%H%M')
 
@@ -289,9 +290,8 @@ if __name__ == "__main__":
 
             print(f'=> Starting training {iteration + 1}...')
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-            # weights = torch.tensor([200])
-            # loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-            loss_bce = nn.BCEWithLogitsLoss().to(device)
+            weights = torch.tensor([50])
+            loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
             train_losses = []
             test_losses = []
             accuracy_list = []
@@ -299,6 +299,7 @@ if __name__ == "__main__":
             recall_list = []
             f1_list = []
             with open(f'{pred_folder}{date}_log.txt', 'w') as log_file:
+                # TODO: write all hyperparameters + model to file
                 for t in range(epochs):
                     print(f'=> Epoch ({t + 1})')
 
@@ -341,6 +342,7 @@ if __name__ == "__main__":
                             precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                             recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                             f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                    # TODO: add mIOU metric
                     accuracy = accuracy_metric.compute().item()
                     precision = precision_metric.compute().item()
                     recall = recall_metric.compute().item()
