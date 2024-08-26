@@ -1,0 +1,62 @@
+import torch.utils.data
+from torch import nn
+
+
+class SDFUnet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv2 = nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv3 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv4 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv6 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv7 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv8 = nn.Conv3d(in_channels=24, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv9 = nn.Conv3d(in_channels=8, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.deconv1 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2),
+                                          padding=(1, 1, 1), output_padding=(1, 1, 1))
+        self.deconv2 = nn.ConvTranspose3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(2, 2, 2),
+                                          padding=(1, 1, 1), output_padding=(1, 1, 1))
+        self.sigmoid = nn.Sigmoid()
+        self.ReLU = nn.ReLU()
+        self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
+
+    def forward(self, x):
+        logits = self.conv1(x)
+        logits = self.ReLU(logits)
+        logits = self.conv2(logits)
+        logits = self.ReLU(logits)
+        skip1 = torch.clone(logits)
+        logits, _ = self.max_pool(logits)
+        logits = self.conv3(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv4(logits)
+        logits = self.ReLU(logits)
+        skip2 = torch.clone(logits)
+        logits, _ = self.max_pool(logits)
+        logits = self.conv5(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits = self.deconv1(logits)
+        logits = torch.cat((logits, skip2), dim=1)
+        logits = self.conv7(logits)
+        logits = self.ReLU(logits)
+        logits = self.deconv2(logits)
+        logits = torch.cat((logits, skip1), dim=1)
+        logits = self.conv8(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv9(logits)
+        return logits

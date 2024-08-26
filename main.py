@@ -1,17 +1,20 @@
 import numpy as np
 import torch.utils.data
+import torchinfo
 from torch.utils.data import DataLoader
 from torch import nn
 from torcheval.metrics import BinaryAccuracy
 from torcheval.metrics import BinaryPrecision
 from torcheval.metrics import BinaryRecall
 from torcheval.metrics import BinaryF1Score
+from torchmetrics.classification import BinaryJaccardIndex
 
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
 from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
+from SDFTraining import SDFUnet
 import argparse
 import time
 import matplotlib.pyplot as plt
@@ -88,55 +91,8 @@ class SDFNeuralNetwork(nn.Module):
             nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
         )
 
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=24, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=8, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1))
-        self.deconv1 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.deconv2 = nn.ConvTranspose3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.sigmoid = nn.Sigmoid()
-        self.ReLU = nn.ReLU()
-        self.leakyReLU = nn.LeakyReLU()
-        self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
-
-    def u_net(self, x):
-        logits = self.conv1(x)
-        logits = self.ReLU(logits)
-        logits = self.conv2(logits)
-        logits = self.ReLU(logits)
-        skip1 = torch.clone(logits)
-        logits, _ = self.max_pool(logits)
-        logits = self.conv3(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv4(logits)
-        logits = self.ReLU(logits)
-        skip2 = torch.clone(logits)
-        logits, _ = self.max_pool(logits)
-        logits = self.conv5(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv6(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv6(logits)
-        logits = self.ReLU(logits)
-        logits = self.deconv1(logits)
-        logits = torch.cat((logits, skip2), dim=1)
-        logits = self.conv7(logits)
-        logits = self.ReLU(logits)
-        logits = self.deconv2(logits)
-        logits = torch.cat((logits, skip1), dim=1)
-        logits = self.conv8(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv9(logits)
-
-        return logits
-
     def forward(self, x):
-        logits = self.u_net(x)
+        logits = self.conv3d_upsampling_1(x)
         return logits
 
 
@@ -270,7 +226,7 @@ if __name__ == "__main__":
             train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
             # Hyper-parameters of training.
-            epochs = 25
+            epochs = 50
             learning_rate = 0.0005
             batch_size = 16
 
@@ -286,11 +242,12 @@ if __name__ == "__main__":
             device = 'cpu'
             if torch.cuda.is_available():
                 device = 'cuda'
-            model = SDFNeuralNetwork().to(device)
+            model = SDFUnet().to(device)
+            model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
 
             print(f'=> Starting training {iteration + 1}...')
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-            weights = torch.tensor([50])
+            weights = torch.tensor([100])
             loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
             train_losses = []
             test_losses = []
@@ -298,10 +255,19 @@ if __name__ == "__main__":
             precision_list = []
             recall_list = []
             f1_list = []
-            with open(f'{pred_folder}{date}_log.txt', 'w') as log_file:
-                # TODO: write all hyperparameters + model to file
+            mIOU_list = []
+            with open(f'{pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file:
+                log_str = f'   Epochs:        {epochs}\n' \
+                          f'   Learning rate: {learning_rate}\n' \
+                          f'   Batch size:    {batch_size}\n' \
+                          f'   Weights:       {str(weights)}\n' \
+                          f'   Optimizer:     {str(optimizer)}\n' \
+                          f'{str(model_description)}\n'
+                log_file.write(log_str)
                 for t in range(epochs):
-                    print(f'=> Epoch ({t + 1})')
+                    log_str = f'=> Epoch ({t + 1})'
+                    log_file.write(log_str)
+                    print(log_str)
 
                     # Training loop
                     model.train()
@@ -325,10 +291,12 @@ if __name__ == "__main__":
                     precision = 0.0
                     recall = 0.0
                     f1_score = 0.0
+                    mIOU = 0.0
                     accuracy_metric = BinaryAccuracy().to(device)
                     precision_metric = BinaryPrecision().to(device)
                     recall_metric = BinaryRecall().to(device)
                     f1_metric = BinaryF1Score().to(device)
+                    mIOU_metric = BinaryJaccardIndex().to(device)
                     sigmoid = nn.Sigmoid().to(device)
                     with torch.no_grad():
                         for X, y in test_dataset:
@@ -342,11 +310,12 @@ if __name__ == "__main__":
                             precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                             recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                             f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                    # TODO: add mIOU metric
+                            mIOU_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
                     accuracy = accuracy_metric.compute().item()
                     precision = precision_metric.compute().item()
                     recall = recall_metric.compute().item()
                     f1_score = f1_metric.compute().item()
+                    mIOU = mIOU_metric.compute().item()
                     test_loss /= len(test_dataset)
 
                     # Output metrics + write to log file for later
@@ -355,6 +324,7 @@ if __name__ == "__main__":
                               f'    - Precision: {precision * 100:.2f}% ({precision})\n' \
                               f'    - Recall:    {recall * 100:.2f}% ({recall})\n' \
                               f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n' \
+                              f'    - mIOU:      {mIOU * 100:.2f}% ({mIOU})\n' \
                               f'    - BCE loss:  {test_loss}\n'
                     print(log_str)
                     log_file.write(log_str)
@@ -364,10 +334,12 @@ if __name__ == "__main__":
                     precision_list.append(precision)
                     recall_list.append(recall)
                     f1_list.append(f1_score)
+                    mIOU_list.append(mIOU)
                     accuracy_metric.reset()
                     precision_metric.reset()
                     recall_metric.reset()
                     f1_metric.reset()
+                    mIOU_metric.reset()
 
             # Save some predicted samples to pred/ folder (to visualize later)
             sigmoid = nn.Sigmoid()
@@ -379,6 +351,7 @@ if __name__ == "__main__":
                 sdf_writer.write_points(prediction_conv)
 
             # plt.plot(accuracy_list, color='yellow', label='Accuracy')
+            plt.plot(mIOU_list, color='yellow', label='mIOU')
             plt.plot(precision_list, color='green', label='Precision')
             plt.plot(recall_list, color='blue', label='Recall')
             plt.plot(f1_list, color='red', label='F1 Score')
