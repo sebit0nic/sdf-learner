@@ -8,6 +8,7 @@ from torcheval.metrics import BinaryPrecision
 from torcheval.metrics import BinaryRecall
 from torcheval.metrics import BinaryF1Score
 from torchmetrics.classification import BinaryJaccardIndex
+from torchvision.ops import sigmoid_focal_loss
 
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
@@ -24,6 +25,8 @@ import mesh_to_sdf
 
 
 # TODO: use multiple classes instead of one (for printing of model)
+# TODO: implement SegNet
+# TODO: implement FCN
 class SDFNeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
@@ -94,6 +97,21 @@ class SDFNeuralNetwork(nn.Module):
     def forward(self, x):
         logits = self.conv3d_upsampling_1(x)
         return logits
+
+
+class TverskyLoss(nn.Module):
+    def __init__(self, alpha=0.5, beta=0.5):
+        super(TverskyLoss, self).__init__()
+        self.alpha = alpha
+        self.beta = beta
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs, targets):
+        pred = self.sigmoid(inputs)
+        TP = (inputs * targets).sum()
+        FN = (targets * (1 - pred.round())).sum()
+        FP = ((1 - targets) * pred.round()).sum()
+        return 1 - (TP / (TP + self.alpha * FN + self.beta * FP))
 
 
 if __name__ == "__main__":
@@ -219,6 +237,7 @@ if __name__ == "__main__":
 
     if args.train:
         iterations = 5
+        # TODO: implement grid search (per network structure)
         for iteration in range(iterations):
             date = time.strftime('%Y%m%d%H%M')
 
@@ -226,7 +245,7 @@ if __name__ == "__main__":
             train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
             # Hyper-parameters of training.
-            epochs = 50
+            epochs = 20
             learning_rate = 0.0005
             batch_size = 16
 
@@ -248,7 +267,9 @@ if __name__ == "__main__":
             print(f'=> Starting training {iteration + 1}...')
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             weights = torch.tensor([100])
-            loss_bce = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
+            # TODO: implement different loss functions
+            # loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
+            loss_function = TverskyLoss(0.1, 0.9).to(device)
             train_losses = []
             test_losses = []
             accuracy_list = []
@@ -275,7 +296,7 @@ if __name__ == "__main__":
                     for batch, (X, y) in enumerate(train_dataloader):
                         # Compute prediction of current model and compute loss
                         prediction = model(X)
-                        train_loss = loss_bce(prediction, y)
+                        train_loss = loss_function(prediction, y)
 
                         # Do backpropagation
                         train_loss.backward()
@@ -302,7 +323,7 @@ if __name__ == "__main__":
                         for X, y in test_dataset:
                             # Predict output of one test sample
                             prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
-                            test_loss += loss_bce(prediction, y.squeeze()).item()
+                            test_loss += loss_function(prediction, y.squeeze()).item()
 
                             # Update metrics (accuracy, precision, recall, f1) of test samples
                             prediction = sigmoid(prediction)
