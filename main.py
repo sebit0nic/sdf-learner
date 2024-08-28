@@ -3,18 +3,15 @@ import torch.utils.data
 import torchinfo
 from torch.utils.data import DataLoader
 from torch import nn
-from torcheval.metrics import BinaryAccuracy
-from torcheval.metrics import BinaryPrecision
-from torcheval.metrics import BinaryRecall
-from torcheval.metrics import BinaryF1Score
+from torcheval.metrics import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
 from torchmetrics.classification import BinaryJaccardIndex
-from torchvision.ops import sigmoid_focal_loss
 
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
 from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
+from SDFTraining import DiceLoss, TverskyLoss, FocalTverskyLoss
 from SDFTraining import SDFUnet
 import argparse
 import time
@@ -22,96 +19,6 @@ import matplotlib.pyplot as plt
 import itertools
 import trimesh
 import mesh_to_sdf
-
-
-# TODO: use multiple classes instead of one (for printing of model)
-# TODO: implement SegNet
-# TODO: implement FCN
-class SDFNeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv3d_upsampling_1 = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=1, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.Upsample(scale_factor=8, mode='trilinear')
-        )
-
-        self.conv3d_transpose_conv_1 = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.ConvTranspose3d(in_channels=64, out_channels=32, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=16, out_channels=8, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=4, out_channels=2, kernel_size=(2, 2, 2), stride=(2, 2, 2)),
-            nn.ConvTranspose3d(in_channels=2, out_channels=1, kernel_size=(2, 2, 2), stride=(2, 2, 2))
-        )
-
-        self.conv3d_transpose_conv_2 = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.ReLU(),
-            nn.Conv3d(in_channels=4, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.ReLU(),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.ReLU(),
-            nn.Conv3d(in_channels=8, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.ReLU(),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.ConvTranspose3d(in_channels=8, out_channels=4, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1)),
-            nn.ReLU(),
-            nn.ConvTranspose3d(in_channels=4, out_channels=1, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), output_padding=(1, 1, 1))
-        )
-
-        self.conv3d_deconvolution_1 = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=2, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=2, out_channels=4, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=4, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1)),
-            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)),
-            nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True),
-            nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
-        )
-
-    def forward(self, x):
-        logits = self.conv3d_upsampling_1(x)
-        return logits
-
-
-class TverskyLoss(nn.Module):
-    def __init__(self, alpha=0.5, beta=0.5):
-        super(TverskyLoss, self).__init__()
-        self.alpha = alpha
-        self.beta = beta
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, inputs, targets):
-        pred = self.sigmoid(inputs)
-        TP = (inputs * targets).sum()
-        FN = (targets * (1 - pred.round())).sum()
-        FP = ((1 - targets) * pred.round()).sum()
-        return 1 - (TP / (TP + self.alpha * FN + self.beta * FP))
 
 
 if __name__ == "__main__":
@@ -236,40 +143,45 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train:
-        iterations = 5
         # TODO: implement grid search (per network structure)
-        for iteration in range(iterations):
-            date = time.strftime('%Y%m%d%H%M')
+        full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
+        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
 
-            full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
-            train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
+        # Hyper-parameters of training.
+        epochs = 30
+        learning_rate = 0.0005
+        batch_size = 16
 
-            # Hyper-parameters of training.
-            epochs = 20
-            learning_rate = 0.0005
-            batch_size = 16
+        # Initialize train + validation + test data loader with given batch size.
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
-            # Initialize train + validation + test data loader with given batch size.
-            train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-            test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+        # Get dimension of input data (most likely always 64 * 64 * 64).
+        train_features, _ = next(iter(train_dataloader))
+        dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
 
-            # Get dimension of input data (most likely always 64 * 64 * 64).
-            train_features, _ = next(iter(train_dataloader))
-            dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
+        # Check if we have GPU available to run tensors on.
+        device = 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda'
+        weights = torch.tensor([100])
+        loss_functions = [DiceLoss(),
+                          TverskyLoss(0.5),
+                          TverskyLoss(0.1),
+                          TverskyLoss(0.9),
+                          FocalTverskyLoss(0.5, 2),
+                          FocalTverskyLoss(0.1, 2),
+                          FocalTverskyLoss(0.9, 2)]
 
-            # Check if we have GPU available to run tensors on.
-            device = 'cpu'
-            if torch.cuda.is_available():
-                device = 'cuda'
+        iteration = 1
+        for func in loss_functions:
+            loss_function = func.to(device)
             model = SDFUnet().to(device)
             model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
-
-            print(f'=> Starting training {iteration + 1}...')
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-            weights = torch.tensor([100])
-            # TODO: implement different loss functions
-            # loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-            loss_function = TverskyLoss(0.1, 0.9).to(device)
+
+            print(f'=> Starting training {iteration}...')
+            date = time.strftime('%Y%m%d%H%M')
             train_losses = []
             test_losses = []
             accuracy_list = []
@@ -283,6 +195,7 @@ if __name__ == "__main__":
                           f'   Batch size:    {batch_size}\n' \
                           f'   Weights:       {str(weights)}\n' \
                           f'   Optimizer:     {str(optimizer)}\n' \
+                          f'   Loss function: {loss_function.__class__.__name__}{vars(loss_function)}\n' \
                           f'{str(model_description)}\n'
                 log_file.write(log_str)
                 for t in range(epochs):
@@ -322,8 +235,8 @@ if __name__ == "__main__":
                     with torch.no_grad():
                         for X, y in test_dataset:
                             # Predict output of one test sample
-                            prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z))).squeeze()
-                            test_loss += loss_function(prediction, y.squeeze()).item()
+                            prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
+                            test_loss += loss_function(prediction, y).item()
 
                             # Update metrics (accuracy, precision, recall, f1) of test samples
                             prediction = sigmoid(prediction)
@@ -346,7 +259,7 @@ if __name__ == "__main__":
                               f'    - Recall:    {recall * 100:.2f}% ({recall})\n' \
                               f'    - F1 score:  {f1_score * 100:.2f}% ({f1_score})\n' \
                               f'    - mIOU:      {mIOU * 100:.2f}% ({mIOU})\n' \
-                              f'    - BCE loss:  {test_loss}\n'
+                              f'    - Loss:      {test_loss}\n'
                     print(log_str)
                     log_file.write(log_str)
 
@@ -361,6 +274,8 @@ if __name__ == "__main__":
                     recall_metric.reset()
                     f1_metric.reset()
                     mIOU_metric.reset()
+
+            iteration += 1
 
             # Save some predicted samples to pred/ folder (to visualize later)
             sigmoid = nn.Sigmoid()

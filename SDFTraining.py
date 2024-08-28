@@ -2,6 +2,50 @@ import torch.utils.data
 from torch import nn
 
 
+class DiceLoss(nn.Module):
+    def __init__(self):
+        super(DiceLoss, self).__init__()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs, targets):
+        logits = self.sigmoid(inputs)
+        TP = (logits * targets).sum(dim=(2, 3, 4))
+        total = (targets + logits).sum(dim=(2, 3, 4))
+        return (1 - ((2 * TP + 1) / (total + 1))).mean()
+
+
+class TverskyLoss(nn.Module):
+    def __init__(self, beta=0.5):
+        super(TverskyLoss, self).__init__()
+        self.beta = beta
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs, targets):
+        logits = self.sigmoid(inputs)
+        TP = (logits * targets).sum(dim=(2, 3, 4))
+        FN = (targets * (1 - logits)).sum(dim=(2, 3, 4))
+        FP = ((1 - targets) * logits).sum(dim=(2, 3, 4))
+        return (1 - (TP / (TP + (1 - self.beta) * FN + self.beta * FP))).mean()
+
+
+class FocalTverskyLoss(nn.Module):
+    def __init__(self, beta=0.5, gamma=2):
+        super(FocalTverskyLoss, self).__init__()
+        self.beta = beta
+        self.gamma = gamma
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, inputs, targets):
+        logits = self.sigmoid(inputs)
+        TP = (logits * targets).sum(dim=(2, 3, 4))
+        FN = (targets * (1 - logits)).sum(dim=(2, 3, 4))
+        FP = ((1 - targets) * logits).sum(dim=(2, 3, 4))
+        TI = TP / (TP + (1 - self.beta) * FN + self.beta * FP)
+        return torch.pow(1 - TI, self.gamma).mean()
+
+
+# TODO: implement SegNet
+# TODO: implement FCN
 class SDFUnet(nn.Module):
     def __init__(self):
         super().__init__()
