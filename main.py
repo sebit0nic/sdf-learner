@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
         # Hyper-parameters of training.
         epochs = 30
-        learning_rate = 0.0005
+        learning_rate = 0.001
         batch_size = 16
 
         # Initialize train + validation + test data loader with given batch size.
@@ -164,18 +164,18 @@ if __name__ == "__main__":
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
-        weights = torch.tensor([100])
-        loss_functions = [DiceLoss(),
-                          TverskyLoss(0.5),
-                          TverskyLoss(0.1),
-                          TverskyLoss(0.9),
-                          FocalTverskyLoss(0.5, 2),
-                          FocalTverskyLoss(0.1, 2),
-                          FocalTverskyLoss(0.9, 2)]
+        # loss_functions = [DiceLoss(),
+        #                   TverskyLoss(0.5),
+        #                   TverskyLoss(0.1),
+        #                   TverskyLoss(0.9),
+        #                   FocalTverskyLoss(0.5, 2),
+        #                   FocalTverskyLoss(0.1, 2),
+        #                   FocalTverskyLoss(0.9, 2)]
 
         iteration = 1
-        for func in loss_functions:
-            loss_function = func.to(device)
+        for weight in range(5, 20):
+            weights = torch.tensor([weight * 10])
+            loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
             model = SDFUnet().to(device)
             model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
@@ -193,7 +193,6 @@ if __name__ == "__main__":
                 log_str = f'   Epochs:        {epochs}\n' \
                           f'   Learning rate: {learning_rate}\n' \
                           f'   Batch size:    {batch_size}\n' \
-                          f'   Weights:       {str(weights)}\n' \
                           f'   Optimizer:     {str(optimizer)}\n' \
                           f'   Loss function: {loss_function.__class__.__name__}{vars(loss_function)}\n' \
                           f'{str(model_description)}\n'
@@ -236,7 +235,7 @@ if __name__ == "__main__":
                         for X, y in test_dataset:
                             # Predict output of one test sample
                             prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
-                            test_loss += loss_function(prediction, y).item()
+                            test_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
 
                             # Update metrics (accuracy, precision, recall, f1) of test samples
                             prediction = sigmoid(prediction)
@@ -286,7 +285,7 @@ if __name__ == "__main__":
                 prediction_conv = prediction.squeeze().round().numpy(force=True).astype(np.int32)
                 sdf_writer.write_points(prediction_conv)
 
-            # plt.plot(accuracy_list, color='yellow', label='Accuracy')
+            plt.plot(accuracy_list, color='cyan', label='Accuracy')
             plt.plot(mIOU_list, color='yellow', label='mIOU')
             plt.plot(precision_list, color='green', label='Precision')
             plt.plot(recall_list, color='blue', label='Recall')
