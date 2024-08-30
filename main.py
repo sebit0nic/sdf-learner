@@ -12,7 +12,7 @@ from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
 from SDFTraining import DiceLoss, TverskyLoss, FocalTverskyLoss
-from SDFTraining import SDFUnet
+from SDFTraining import SDFUnet1, SDFUnet2
 import argparse
 import time
 import matplotlib.pyplot as plt
@@ -150,11 +150,11 @@ if __name__ == "__main__":
         # Hyper-parameters of training.
         epochs = 30
         learning_rate = 0.001
-        batch_size = 16
+        batch_size = 8
 
         # Initialize train + validation + test data loader with given batch size.
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
         # Get dimension of input data (most likely always 64 * 64 * 64).
         train_features, _ = next(iter(train_dataloader))
@@ -173,12 +173,15 @@ if __name__ == "__main__":
         #                   FocalTverskyLoss(0.9, 2)]
 
         iteration = 1
-        for weight in range(5, 20):
+        for weight in range(10, 20):
+            # TODO: try with no weights (does it even make difference?)
+            # TODO: try different loss functions
             weights = torch.tensor([weight * 10])
             loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-            model = SDFUnet().to(device)
+            model = SDFUnet1().to(device)
             model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
-            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
             print(f'=> Starting training {iteration}...')
             date = time.strftime('%Y%m%d%H%M')
@@ -213,7 +216,7 @@ if __name__ == "__main__":
                         # Do backpropagation
                         train_loss.backward()
                         optimizer.step()
-                        optimizer.zero_grad()
+                        optimizer.zero_grad(set_to_none=True)
 
                     train_losses.append(train_loss.item())
 
@@ -225,6 +228,7 @@ if __name__ == "__main__":
                     recall = 0.0
                     f1_score = 0.0
                     mIOU = 0.0
+                    # TODO: add confusion matrix
                     accuracy_metric = BinaryAccuracy().to(device)
                     precision_metric = BinaryPrecision().to(device)
                     recall_metric = BinaryRecall().to(device)
@@ -286,7 +290,7 @@ if __name__ == "__main__":
                 sdf_writer.write_points(prediction_conv)
 
             plt.plot(accuracy_list, color='cyan', label='Accuracy')
-            plt.plot(mIOU_list, color='yellow', label='mIOU')
+            plt.plot(mIOU_list, color='orange', label='mIOU')
             plt.plot(precision_list, color='green', label='Precision')
             plt.plot(recall_list, color='blue', label='Recall')
             plt.plot(f1_list, color='red', label='F1 Score')
