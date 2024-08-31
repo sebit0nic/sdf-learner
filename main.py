@@ -12,7 +12,7 @@ from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
 from SDFTraining import DiceLoss, TverskyLoss, FocalTverskyLoss
-from SDFTraining import SDFUnet1, SDFUnet2
+from SDFTraining import SDFUnetLevel2, SDFUnetLevel3
 import argparse
 import time
 import matplotlib.pyplot as plt
@@ -164,21 +164,20 @@ if __name__ == "__main__":
         device = 'cpu'
         if torch.cuda.is_available():
             device = 'cuda'
-        # loss_functions = [DiceLoss(),
-        #                   TverskyLoss(0.5),
-        #                   TverskyLoss(0.1),
-        #                   TverskyLoss(0.9),
-        #                   FocalTverskyLoss(0.5, 2),
-        #                   FocalTverskyLoss(0.1, 2),
-        #                   FocalTverskyLoss(0.9, 2)]
+        loss_functions = [DiceLoss(),
+                          TverskyLoss(0.5),
+                          TverskyLoss(0.1),
+                          TverskyLoss(0.9),
+                          FocalTverskyLoss(0.5, 2),
+                          FocalTverskyLoss(0.1, 2),
+                          FocalTverskyLoss(0.9, 2)]
 
         iteration = 1
-        for weight in range(10, 20):
-            # TODO: try with no weights (does it even make difference?)
-            # TODO: try different loss functions
-            weights = torch.tensor([weight * 10])
-            loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-            model = SDFUnet1().to(device)
+        for func in loss_functions:
+            # weights = torch.tensor([1])
+            # loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
+            loss_function = func.to(device)
+            model = SDFUnetLevel2().to(device)
             model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
             # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

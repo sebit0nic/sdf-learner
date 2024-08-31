@@ -46,7 +46,7 @@ class FocalTverskyLoss(nn.Module):
 
 # TODO: implement SegNet
 # TODO: implement FCN
-class SDFUnet1(nn.Module):
+class SDFUnetLevel2(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
@@ -106,7 +106,8 @@ class SDFUnet1(nn.Module):
         return logits
 
 
-class SDFUnet2(nn.Module):
+# TODO: try this one out
+class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
