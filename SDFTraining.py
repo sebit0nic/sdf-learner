@@ -1,5 +1,8 @@
 import torch.utils.data
 from torch import nn
+from torch.utils.data import DataLoader
+import itertools
+from SDFDataset import SDFDataset
 
 
 class DiceLoss(nn.Module):
@@ -106,7 +109,6 @@ class SDFUnetLevel2(nn.Module):
         return logits
 
 
-# TODO: try this one out
 class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -193,3 +195,48 @@ class SDFUnetLevel3(nn.Module):
         logits = self.ReLU(logits)
         logits = self.conv15(logits)
         return logits
+
+
+class SDFTrainer:
+    def __init__(self, model_type, grid_search):
+        # Check if we have GPU available to run tensors on.
+        self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+
+        # Fixed parameters.
+        self.min_epochs = 10
+        self.max_epochs = 100
+        self.grid_search = grid_search
+
+        # Parameters found during grid search (if enabled).
+        self.learning_rate = 0.001
+        self.batch_size = 8
+        self.loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])).to(self.device)
+
+    def train(self):
+        loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
+                          nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
+                          nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
+                          nn.BCEWithLogitsLoss(pos_weight=torch.tensor([100])),
+                          DiceLoss(),
+                          TverskyLoss(0.1),
+                          TverskyLoss(0.5),
+                          TverskyLoss(0.9),
+                          FocalTverskyLoss(0.1, 2),
+                          FocalTverskyLoss(0.5, 2),
+                          FocalTverskyLoss(0.9, 2)]
+        learning_rates = [1, 0.1, 0.01, 0.001, 0.0001]
+        batch_sizes = [1, 2, 4, 8, 16, 32]
+        grid = itertools.product(loss_functions, learning_rates, batch_sizes)
+
+        full_dataset = SDFDataset('samples\\', 'out\\', 1000)
+        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.6, 0.2, 0.2])
+
+        # Initialize train + validation + test data loader with given batch size.
+        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
+
+        # Get dimension of input data (most likely always 64 * 64 * 64).
+        train_features, _ = next(iter(train_dataloader))
+        dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]

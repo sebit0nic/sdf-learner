@@ -3,19 +3,21 @@ import torch.utils.data
 import torchinfo
 from torch.utils.data import DataLoader
 from torch import nn
-from torcheval.metrics import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score
+from torcheval.metrics import BinaryAccuracy, BinaryPrecision, BinaryRecall, BinaryF1Score, BinaryConfusionMatrix
 from torchmetrics.classification import BinaryJaccardIndex
 
+import SDFTraining
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
 from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFDataset import SDFDataset
 from SDFTraining import DiceLoss, TverskyLoss, FocalTverskyLoss
-from SDFTraining import SDFUnetLevel2, SDFUnetLevel3
+from SDFTraining import SDFUnetLevel2, SDFUnetLevel3, SDFTrainer
 import argparse
 import time
 import matplotlib.pyplot as plt
+import seaborn as sn
 import itertools
 import trimesh
 import mesh_to_sdf
@@ -36,6 +38,11 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-t', '--train', action='store', const='Set', nargs='?',
                         help='Train the neural network using provided samples and labels.')
+    parser.add_argument('-tu2', '--train_unet_2', action='store', const='Set', nargs='?',
+                        help='Train the neural network using the U-Net model with 2 levels.')
+    parser.add_argument('-tu3', '--train_unet_3', action='store', const='Set', nargs='?',
+                        help='Train the neural network using the U-Net model with 3 levels.')
+
     args = parser.parse_args()
 
     point_size = 5
@@ -46,7 +53,7 @@ if __name__ == "__main__":
     start_sample_num = 0
     sample_num = 1000
     sample_dimension = 64
-    prediction_num = 3
+    prediction_num = 5
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -69,6 +76,8 @@ if __name__ == "__main__":
     print('   Compute all:         ' + str(args.compute_all == 'Set'))
     print('   Visualize:           ' + str(args.visualize))
     print('   Train model:         ' + str(args.train == 'Set'))
+    print('   Train U-Net Lvl 2:   ' + str(args.train_unet_2 == 'Set'))
+    print('   Train U-Net Lvl 3:   ' + str(args.train_unet_3 == 'Set'))
     time.sleep(2)
     print('')
 
@@ -142,6 +151,10 @@ if __name__ == "__main__":
         else:
             print(f'Invalid folder \'{folder}\' found.')
 
+    if args.train_unet_2:
+        trainer = SDFTrainer('u2', True)
+        trainer.train()
+
     if args.train:
         # TODO: implement grid search (per network structure)
         full_dataset = SDFDataset('samples\\', 'out\\', sample_num)
@@ -177,9 +190,8 @@ if __name__ == "__main__":
             # weights = torch.tensor([1])
             # loss_function = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
             loss_function = func.to(device)
-            model = SDFUnetLevel2().to(device)
+            model = SDFUnetLevel3().to(device)
             model_description = torchinfo.summary(model, (1, 1, 64, 64, 64), verbose=0)
-            # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
             print(f'=> Starting training {iteration}...')
@@ -191,6 +203,7 @@ if __name__ == "__main__":
             recall_list = []
             f1_list = []
             mIOU_list = []
+            confusion_matrix = []
             with open(f'{pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file:
                 log_str = f'   Epochs:        {epochs}\n' \
                           f'   Learning rate: {learning_rate}\n' \
@@ -227,12 +240,12 @@ if __name__ == "__main__":
                     recall = 0.0
                     f1_score = 0.0
                     mIOU = 0.0
-                    # TODO: add confusion matrix
                     accuracy_metric = BinaryAccuracy().to(device)
                     precision_metric = BinaryPrecision().to(device)
                     recall_metric = BinaryRecall().to(device)
                     f1_metric = BinaryF1Score().to(device)
                     mIOU_metric = BinaryJaccardIndex().to(device)
+                    confusion_metric = BinaryConfusionMatrix(normalize='pred').to(device)
                     sigmoid = nn.Sigmoid().to(device)
                     with torch.no_grad():
                         for X, y in test_dataset:
@@ -242,17 +255,21 @@ if __name__ == "__main__":
 
                             # Update metrics (accuracy, precision, recall, f1) of test samples
                             prediction = sigmoid(prediction)
-                            accuracy_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                            precision_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                            recall_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                            f1_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
-                            mIOU_metric.update(prediction.reshape((dim_x ** 3)), y.reshape((dim_x ** 3)).int())
+                            prediction_conv = prediction.reshape((dim_x ** 3))
+                            label_conv = y.reshape((dim_x ** 3)).int()
+                            accuracy_metric.update(prediction_conv, label_conv)
+                            precision_metric.update(prediction_conv, label_conv)
+                            recall_metric.update(prediction_conv, label_conv)
+                            f1_metric.update(prediction_conv, label_conv)
+                            mIOU_metric.update(prediction_conv, label_conv)
+                            confusion_metric.update(prediction_conv, label_conv)
                     accuracy = accuracy_metric.compute().item()
                     precision = precision_metric.compute().item()
                     recall = recall_metric.compute().item()
                     f1_score = f1_metric.compute().item()
                     mIOU = mIOU_metric.compute().item()
                     test_loss /= len(test_dataset)
+                    confusion_matrix = confusion_metric.compute()
 
                     # Output metrics + write to log file for later
                     log_str = f'   => Test set summary:\n' \
@@ -276,6 +293,7 @@ if __name__ == "__main__":
                     recall_metric.reset()
                     f1_metric.reset()
                     mIOU_metric.reset()
+                    confusion_metric.reset()
 
             iteration += 1
 
@@ -306,6 +324,12 @@ if __name__ == "__main__":
             plt.ylabel('Loss')
             plt.title('BCE loss over epochs')
             plt.savefig(f'{pred_folder}{date}_loss.png')
+            plt.show()
+
+            sn.heatmap(confusion_matrix.numpy(force=True), square=True, xticklabels='01', yticklabels='01', annot=True)
+            plt.xlabel('Actual')
+            plt.ylabel('Predicted')
+            plt.savefig(f'{pred_folder}{date}_confusion.png')
             plt.show()
 
     end_time = time.perf_counter()
