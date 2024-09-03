@@ -1,7 +1,8 @@
-from SDFVisualizer import ProgressBar
 import os
 import numpy as np
 import torch
+
+from SDFVisualizer import ProgressBar
 
 
 class SDFReader:

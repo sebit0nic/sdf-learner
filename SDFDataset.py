@@ -1,6 +1,7 @@
-from SDFFileHandler import SDFReader
 import torch
+
 from torch.utils.data import Dataset
+from SDFFileHandler import SDFReader
 
 
 class SDFDataset(Dataset):

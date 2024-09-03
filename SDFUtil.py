@@ -1,5 +1,6 @@
-from SDFVisualizer import ProgressBar
 import numpy as np
+
+from SDFVisualizer import ProgressBar
 
 
 class SDFCurvature:
