@@ -26,6 +26,8 @@ if __name__ == "__main__":
                         help='Compute points of high curvature for all SDF files inside folder.')
     parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-t', '--train', help='Train the neural network using some predefined model.')
+    parser.add_argument('-s', '--grid_search', action='store', const='Set', nargs='?',
+                        help='Grid search over hyperparameters before final training.')
 
     args = parser.parse_args()
 
@@ -57,6 +59,7 @@ if __name__ == "__main__":
     print('   Compute all:  ' + str(args.compute_all == 'Set'))
     print('   Visualize:    ' + str(args.visualize))
     print('   Train:        ' + str(args.train))
+    print('   Grid search:  ' + str(args.grid_search == 'Set'))
     time.sleep(2)
     print('')
 
@@ -131,7 +134,7 @@ if __name__ == "__main__":
             print(f'Invalid folder \'{folder}\' found.')
 
     if args.train is not None:
-        trainer = SDFTrainer(str(args.train), False)
+        trainer = SDFTrainer(str(args.train), args.grid_search)
         trainer.train()
 
     end_time = time.perf_counter()

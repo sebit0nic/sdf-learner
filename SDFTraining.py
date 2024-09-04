@@ -206,12 +206,17 @@ class SDFUnetLevel3(nn.Module):
 
 class SDFTrainer:
     def __init__(self, model_type, grid_search):
-        # Check if we have GPU available to run tensors on.
+        # Check if we have GPU available to run tensors on
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = 'cuda'
 
-        # Fixed parameters.
+        # Available datasets
+        self.train_dataset = None
+        self.val_dataset = None
+        self.test_dataset = None
+
+        # Fixed parameters
         self.min_epochs = 10
         self.max_epochs = 100
         self.early_exit_iterations = 3
@@ -221,7 +226,7 @@ class SDFTrainer:
         self.model_type = model_type
         self.grid_search = grid_search
 
-        # Parameters found during grid search (if enabled).
+        # Parameters found during grid search (if enabled)
         self.learning_rate = 0.001
         self.batch_size = 8
         self.loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])).to(self.device)
@@ -234,79 +239,193 @@ class SDFTrainer:
         else:
             raise ValueError(f'Unknown model type \"{self.model_type}\"')
 
+    def print_training_parameters(self, log_file, learning_rate, batch_size, loss_function, model_description):
+        log_str = f'=> Starting training...\n' \
+                  f'   Learning rate: {learning_rate}\n' \
+                  f'   Batch size:    {batch_size}\n' \
+                  f'   Loss function: {loss_function.__class__.__name__}{vars(loss_function)}\n' \
+                  f'{str(model_description)}\n'
+        log_file.write(log_str)
+        print(log_str)
+
+    def print_epoch(self, log_file, epoch, metrics, loss):
+        log_str = f'=> Epoch ({epoch + 1})\n' \
+                  f'   => Validation set summary:\n' \
+                  f'    - Accuracy:  {metrics.accuracy * 100:.2f}% ({metrics.accuracy})\n' \
+                  f'    - Precision: {metrics.precision * 100:.2f}% ({metrics.precision})\n' \
+                  f'    - Recall:    {metrics.recall * 100:.2f}% ({metrics.recall})\n' \
+                  f'    - F1 score:  {metrics.f1_score * 100:.2f}% ({metrics.f1_score})\n' \
+                  f'    - mIOU:      {metrics.mIOU * 100:.2f}% ({metrics.mIOU})\n' \
+                  f'    - Loss:      {loss}\n'
+        log_file.write(log_str)
+        print(log_str)
+
     def train(self):
         if self.grid_search:
-            loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
-                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
-                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
-                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([100])),
-                              DiceLoss(),
-                              TverskyLoss(0.1),
-                              TverskyLoss(0.5),
-                              TverskyLoss(0.9),
-                              FocalTverskyLoss(0.1, 2),
-                              FocalTverskyLoss(0.5, 2),
-                              FocalTverskyLoss(0.9, 2)]
-            learning_rates = [1, 0.1, 0.01, 0.001, 0.0001]
-            batch_sizes = [1, 2, 4, 8, 16, 32]
+            # loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
+            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
+            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
+            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([100])),
+            #                   DiceLoss(),
+            #                   TverskyLoss(0.1),
+            #                   TverskyLoss(0.5),
+            #                   TverskyLoss(0.9),
+            #                   FocalTverskyLoss(0.1, 2),
+            #                   FocalTverskyLoss(0.5, 2),
+            #                   FocalTverskyLoss(0.9, 2)]
+            # learning_rates = [1, 0.1, 0.01, 0.001, 0.0001]
+            # batch_sizes = [1, 2, 4, 8, 16, 32]
+            loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
+                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10]))]
+            learning_rates = [0.01, 0.001]
+            batch_sizes = [4, 8]
             grid = itertools.product(loss_functions, learning_rates, batch_sizes)
-            self.grid_search(grid)
+            self.gridsearch(grid)
+
+            # Train one last time on train + validation set, then evaluate on test set
+            self.train_dataset = torch.utils.data.ConcatDataset([self.train_dataset, self.val_dataset])
+            self.trainonce()
         else:
             self.trainonce()
 
     def gridsearch(self, grid):
+        # Prepare datasets
         full_dataset = SDFDataset('samples\\', 'out\\', 1000)
-        train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.6, 0.2, 0.2])
+        if self.train_dataset is None or self.val_dataset is None or self.test_dataset is None:
+            split = [0.6, 0.2, 0.2]
+            self.train_dataset, self.val_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
 
-        # Initialize train + validation + test data loader with given batch size.
-        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
+        best_mIOU = 0.0
+        for loss_function, learning_rate, batch_size in grid:
+            train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=False)
 
-        # Get dimension of input data (most likely always 64 * 64 * 64).
-        train_features, _ = next(iter(train_dataloader))
-        dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
+            # Get dimension of input data (most likely always 64 * 64 * 64)
+            train_features, _ = next(iter(train_dataloader))
+            dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
+
+            # Initialize everything needed for training and push to GPU if possible
+            loss_function = loss_function.to(self.device)
+            model = self.init_model()
+            model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+            date = time.strftime('%Y%m%d%H%M')
+            current_mIOU = 0.0
+            # TODO: change file name so that it resembles validation
+            with (open(f'{self.pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file):
+                self.print_training_parameters(log_file, learning_rate, batch_size, loss_function, model_description)
+
+                metrics = Metrics(self.device)
+                last_validation_loss = 0.0
+                early_exit_count = 0
+
+                for t in range(self.max_epochs):
+                    # Training loop
+                    model.train()
+                    for batch, (X, y) in enumerate(train_dataloader):
+                        # Compute prediction of current model and compute loss
+                        prediction = model(X)
+                        train_loss = loss_function(prediction, y)
+
+                        # Do backpropagation
+                        train_loss.backward()
+                        optimizer.step()
+                        optimizer.zero_grad(set_to_none=True)
+
+                    # Validation loop
+                    model.eval()
+                    validation_loss = 0
+                    sigmoid = nn.Sigmoid().to(self.device)
+                    with torch.no_grad():
+                        for X, y in self.val_dataset:
+                            # Predict output of one validation sample
+                            prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
+                            validation_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
+
+                            # Update metrics (accuracy, precision, recall, f1) of test samples.
+                            prediction = sigmoid(prediction)
+                            prediction_conv = prediction.reshape((dim_x ** 3))
+                            label_conv = y.reshape((dim_x ** 3)).int()
+                            metrics.update(prediction_conv, label_conv)
+                    metrics.compute()
+                    validation_loss /= len(self.val_dataset)
+                    current_mIOU = metrics.mIOU
+
+                    self.print_epoch(log_file, t, metrics, validation_loss)
+                    metrics.append()
+                    metrics.reset_metrics()
+
+                    # Check if validation loss was not improved over last few iterations = early exit
+                    if t > self.min_epochs and validation_loss > last_validation_loss:
+                        log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
+                        print(log_str)
+                        log_file.write(log_str)
+                        early_exit_count += 1
+                        last_validation_loss = validation_loss
+                    else:
+                        early_exit_count = 0
+                        last_validation_loss = validation_loss
+                    if early_exit_count >= self.early_exit_iterations:
+                        log_str = f'   => Terminated due to early exit\n'
+                        print(log_str)
+                        log_file.write(log_str)
+                        break
+
+                # If current model outperforms current best model in grid search, then save parameters
+                if current_mIOU > best_mIOU:
+                    self.loss_function = loss_function
+                    self.learning_rate = learning_rate
+                    self.batch_size = batch_size
+                    best_mIOU = current_mIOU
+
+                    log_str = f'=> Found new best performing parameters (mIOU = {current_mIOU}):\n' \
+                              f'   Learning rate: {self.learning_rate}\n' \
+                              f'   Batch size:    {self.batch_size}\n' \
+                              f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
+                    print(log_str)
+                    log_file.write(log_str)
+
+                metrics.reset_metrics()
+                metrics.reset_lists()
+
+        log_str = f'=> Grid search done, best performing parameters:\n' \
+                  f'   Learning rate: {self.learning_rate}\n' \
+                  f'   Batch size:    {self.batch_size}\n' \
+                  f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
+        print(log_str)
+        # TODO: summary as CSV file for each training?
 
     def trainonce(self):
+        # Prepare datasets and dataloaders
         full_dataset = SDFDataset('samples\\', 'out\\', 1000)
-        train_dataset, test_dataset = torch.utils.data.random_split(full_dataset, [0.8, 0.2])
+        if self.train_dataset is None or self.val_dataset is None or self.test_dataset is None:
+            split = [0.8, 0.2]
+            self.train_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
+        train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=False)
 
-        # Initialize train + validation + test data loader with given batch size.
-        train_dataloader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
-
-        # Get dimension of input data (most likely always 64 * 64 * 64).
+        # Get dimension of input data (most likely always 64 * 64 * 64)
         train_features, _ = next(iter(train_dataloader))
         dim_x, dim_y, dim_z = train_features.size()[2], train_features.size()[3], train_features.size()[4]
 
-        # Initialize everything needed for training and push to GPU if possible.
+        # Initialize everything needed for training and push to GPU if possible
         loss_function = self.loss_function.to(self.device)
         model = self.init_model()
         model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
 
-        print(f'=> Starting training...')
         date = time.strftime('%Y%m%d%H%M')
-        train_losses = []
-        test_losses = []
-        metrics = Metrics(self.device)
+        # TODO: change file name so that it resembles training
+        with (open(f'{self.pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file):
+            self.print_training_parameters(log_file, self.learning_rate, self.batch_size, loss_function,
+                                           model_description)
 
-        with open(f'{self.pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file:
-            log_str = f'   Min epochs:    {self.min_epochs}\n' \
-                      f'   Max epochs:    {self.max_epochs}\n' \
-                      f'   Learning rate: {self.learning_rate}\n' \
-                      f'   Batch size:    {self.batch_size}\n' \
-                      f'   Optimizer:     {str(optimizer)}\n' \
-                      f'   Loss function: {loss_function.__class__.__name__}{vars(loss_function)}\n' \
-                      f'{str(model_description)}\n'
-            log_file.write(log_str)
-
+            train_losses = []
+            test_losses = []
+            metrics = Metrics(self.device)
             last_test_loss = 0.0
             early_exit_count = 0
-            for t in range(self.max_epochs):
-                log_str = f'=> Epoch ({t + 1})'
-                log_file.write(log_str)
-                print(log_str)
 
+            for t in range(self.max_epochs):
                 # Training loop
                 model.train()
                 train_loss = 0
@@ -327,30 +446,20 @@ class SDFTrainer:
                 test_loss = 0
                 sigmoid = nn.Sigmoid().to(self.device)
                 with torch.no_grad():
-                    for X, y in test_dataset:
-                        # Predict output of one test sample.
+                    for X, y in self.test_dataset:
+                        # Predict output of one test sample
                         prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
                         test_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
 
-                        # Update metrics (accuracy, precision, recall, f1) of test samples.
+                        # Update metrics (accuracy, precision, recall, f1) of test samples
                         prediction = sigmoid(prediction)
                         prediction_conv = prediction.reshape((dim_x ** 3))
                         label_conv = y.reshape((dim_x ** 3)).int()
                         metrics.update(prediction_conv, label_conv)
                 metrics.compute()
-                test_loss /= len(test_dataset)
+                test_loss /= len(self.test_dataset)
 
-                # Output metrics + write to log file for later
-                log_str = f'   => Test set summary:\n' \
-                          f'    - Accuracy:  {metrics.accuracy * 100:.2f}% ({metrics.accuracy})\n' \
-                          f'    - Precision: {metrics.precision * 100:.2f}% ({metrics.precision})\n' \
-                          f'    - Recall:    {metrics.recall * 100:.2f}% ({metrics.recall})\n' \
-                          f'    - F1 score:  {metrics.f1_score * 100:.2f}% ({metrics.f1_score})\n' \
-                          f'    - mIOU:      {metrics.mIOU * 100:.2f}% ({metrics.mIOU})\n' \
-                          f'    - Loss:      {test_loss}\n'
-                print(log_str)
-                log_file.write(log_str)
-
+                self.print_epoch(log_file, t, metrics, test_loss)
                 test_losses.append(test_loss)
                 metrics.append()
                 metrics.reset_metrics()
