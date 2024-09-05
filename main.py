@@ -65,7 +65,8 @@ if __name__ == "__main__":
 
     if args.generate_one is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.generate_one).zfill(6)}{in_file_postfix}{in_file_extension}'
-        o_path = f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+        o_path = (f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}'
+                  f'{sample_file_extension}')
         mesh = trimesh.load(i_path)
         x = np.linspace(0, sample_dimension - 1, sample_dimension)
         y = np.linspace(0, sample_dimension - 1, sample_dimension)
@@ -93,7 +94,8 @@ if __name__ == "__main__":
             file.close()
 
     if args.compute_one is not None:
-        i_path = f'{sample_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+        i_path = (f'{sample_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}'
+                  f'{sample_file_extension}')
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)

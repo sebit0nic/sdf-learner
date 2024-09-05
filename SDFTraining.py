@@ -273,11 +273,10 @@ class SDFTrainer:
             #                   FocalTverskyLoss(0.1, 2),
             #                   FocalTverskyLoss(0.5, 2),
             #                   FocalTverskyLoss(0.9, 2)]
-            # learning_rates = [1, 0.1, 0.01, 0.001, 0.0001]
+            # learning_rates = [0.1, 0.01, 0.001, 0.0001]
             # batch_sizes = [1, 2, 4, 8, 16, 32]
-            loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
-                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10]))]
-            learning_rates = [0.01, 0.001]
+            loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1]))]
+            learning_rates = [0.001]
             batch_sizes = [4, 8]
             grid = itertools.product(loss_functions, learning_rates, batch_sizes)
             self.gridsearch(grid)
@@ -296,6 +295,7 @@ class SDFTrainer:
             self.train_dataset, self.val_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
 
         best_mIOU = 0.0
+        # TODO: add header to csv file
         for loss_function, learning_rate, batch_size in grid:
             train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=False)
 
@@ -310,16 +310,18 @@ class SDFTrainer:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
             date = time.strftime('%Y%m%d%H%M')
-            current_mIOU = 0.0
-            # TODO: change file name so that it resembles validation
-            with (open(f'{self.pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file):
+            with (open(f'{self.pred_folder}{date}_validation_log.txt', 'w', encoding='utf-8') as log_file):
                 self.print_training_parameters(log_file, learning_rate, batch_size, loss_function, model_description)
 
                 metrics = Metrics(self.device)
                 last_validation_loss = 0.0
                 early_exit_count = 0
+                current_epoch = 0
 
                 for t in range(self.max_epochs):
+                    current_epoch = t
+                    metrics.reset_metrics()
+
                     # Training loop
                     model.train()
                     for batch, (X, y) in enumerate(train_dataloader):
@@ -349,11 +351,9 @@ class SDFTrainer:
                             metrics.update(prediction_conv, label_conv)
                     metrics.compute()
                     validation_loss /= len(self.val_dataset)
-                    current_mIOU = metrics.mIOU
 
                     self.print_epoch(log_file, t, metrics, validation_loss)
                     metrics.append()
-                    metrics.reset_metrics()
 
                     # Check if validation loss was not improved over last few iterations = early exit
                     if t > self.min_epochs and validation_loss > last_validation_loss:
@@ -372,18 +372,23 @@ class SDFTrainer:
                         break
 
                 # If current model outperforms current best model in grid search, then save parameters
-                if current_mIOU > best_mIOU:
+                if metrics.mIOU > best_mIOU:
                     self.loss_function = loss_function
                     self.learning_rate = learning_rate
                     self.batch_size = batch_size
-                    best_mIOU = current_mIOU
+                    best_mIOU = metrics.mIOU
 
-                    log_str = f'=> Found new best performing parameters (mIOU = {current_mIOU}):\n' \
+                    log_str = f'=> Found new best performing parameters (mIOU = {metrics.mIOU}):\n' \
                               f'   Learning rate: {self.learning_rate}\n' \
                               f'   Batch size:    {self.batch_size}\n' \
                               f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
                     print(log_str)
                     log_file.write(log_str)
+
+                with (open(f'{self.pred_folder}grid_search.csv', 'a', encoding='utf-8') as csv_file):
+                    csv_file.write(f'{self.loss_function.__class__.__name__},{vars(self.loss_function)},'
+                                   f'{learning_rate},{batch_size},{current_epoch},{metrics.accuracy},'
+                                   f'{metrics.precision},{metrics.recall},{metrics.f1_score},{metrics.mIOU}\n')
 
                 metrics.reset_metrics()
                 metrics.reset_lists()
@@ -393,12 +398,12 @@ class SDFTrainer:
                   f'   Batch size:    {self.batch_size}\n' \
                   f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
         print(log_str)
-        # TODO: summary as CSV file for each training?
+        # TODO: immediately try best model on test data set (save each best model)?
 
     def trainonce(self):
         # Prepare datasets and dataloaders
         full_dataset = SDFDataset('samples\\', 'out\\', 1000)
-        if self.train_dataset is None or self.val_dataset is None or self.test_dataset is None:
+        if self.train_dataset is None or self.test_dataset is None:
             split = [0.8, 0.2]
             self.train_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
         train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=False)
@@ -414,8 +419,7 @@ class SDFTrainer:
         optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
 
         date = time.strftime('%Y%m%d%H%M')
-        # TODO: change file name so that it resembles training
-        with (open(f'{self.pred_folder}{date}_log.txt', 'w', encoding='utf-8') as log_file):
+        with (open(f'{self.pred_folder}{date}_test_log.txt', 'w', encoding='utf-8') as log_file):
             self.print_training_parameters(log_file, self.learning_rate, self.batch_size, loss_function,
                                            model_description)
 
