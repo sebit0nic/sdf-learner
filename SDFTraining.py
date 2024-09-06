@@ -54,7 +54,6 @@ class FocalTverskyLoss(nn.Module):
         return torch.pow(1 - TI, self.gamma).mean()
 
 
-# TODO: implement SegNet
 # TODO: implement FCN
 class SDFUnetLevel2(nn.Module):
     def __init__(self):
@@ -81,7 +80,6 @@ class SDFUnetLevel2(nn.Module):
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.deconv2 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.sigmoid = nn.Sigmoid()
         self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
@@ -155,7 +153,6 @@ class SDFUnetLevel3(nn.Module):
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.deconv3 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.sigmoid = nn.Sigmoid()
         self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
@@ -204,6 +201,69 @@ class SDFUnetLevel3(nn.Module):
         return logits
 
 
+# TODO: test this
+class SDFSegnet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv2 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv3 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv4 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv5 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv6 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv7 = nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv8 = nn.Conv3d(in_channels=32, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.conv9 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                               padding=(1, 1, 1))
+        self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
+        self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
+
+    def forward(self, x):
+        logits = self.conv1(x)
+        logits = self.ReLU(logits)
+        logits = self.conv2(logits)
+        logits = self.ReLU(logits)
+        logits, indices1 = self.max_pool(logits)
+        logits = self.conv3(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv4(logits)
+        logits = self.ReLU(logits)
+        logits, indices2 = self.max_pool(logits)
+        logits = self.conv5(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits, indices3 = self.max_pool(logits)
+        logits = self.max_unpool(logits, indices3)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv6(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv7(logits)
+        logits = self.ReLU(logits)
+        logits = self.max_unpool(logits, indices2)
+        logits = self.conv4(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv8(logits)
+        logits = self.ReLU(logits)
+        logits = self.max_unpool(logits, indices1)
+        logits = self.conv2(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv9(logits)
+        logits = self.ReLU(logits)
+        return logits
+
+
 class SDFTrainer:
     def __init__(self, model_type, grid_search):
         # Check if we have GPU available to run tensors on
@@ -236,6 +296,8 @@ class SDFTrainer:
             return SDFUnetLevel2().to(self.device)
         elif self.model_type == 'unet3':
             return SDFUnetLevel3().to(self.device)
+        elif self.model_type == 'seg':
+            return SDFSegnet().to(self.device)
         else:
             raise ValueError(f'Unknown model type \"{self.model_type}\"')
 
@@ -250,7 +312,7 @@ class SDFTrainer:
 
     def print_epoch(self, log_file, epoch, metrics, loss):
         log_str = f'=> Epoch ({epoch + 1})\n' \
-                  f'   => Validation set summary:\n' \
+                  f'   => Validation/test set summary:\n' \
                   f'    - Accuracy:  {metrics.accuracy * 100:.2f}% ({metrics.accuracy})\n' \
                   f'    - Precision: {metrics.precision * 100:.2f}% ({metrics.precision})\n' \
                   f'    - Recall:    {metrics.recall * 100:.2f}% ({metrics.recall})\n' \
@@ -273,11 +335,11 @@ class SDFTrainer:
             #                   FocalTverskyLoss(0.1, 2),
             #                   FocalTverskyLoss(0.5, 2),
             #                   FocalTverskyLoss(0.9, 2)]
-            # learning_rates = [0.1, 0.01, 0.001, 0.0001]
+            # learning_rates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
             # batch_sizes = [1, 2, 4, 8, 16, 32]
             loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1]))]
             learning_rates = [0.001]
-            batch_sizes = [4, 8]
+            batch_sizes = [2, 4, 8]
             grid = itertools.product(loss_functions, learning_rates, batch_sizes)
             self.gridsearch(grid)
 
@@ -295,7 +357,9 @@ class SDFTrainer:
             self.train_dataset, self.val_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
 
         best_mIOU = 0.0
-        # TODO: add header to csv file
+        with (open(f'{self.pred_folder}grid_search.csv', 'a', encoding='utf-8') as csv_file):
+            csv_file.write(f'loss_function;parameters;learning_rate;batch_size;epochs;accuracy;precision;recall;'
+                           f'f1_score;m_iou\n')
         for loss_function, learning_rate, batch_size in grid:
             train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=False)
 
@@ -310,95 +374,100 @@ class SDFTrainer:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
             date = time.strftime('%Y%m%d%H%M')
-            with (open(f'{self.pred_folder}{date}_validation_log.txt', 'w', encoding='utf-8') as log_file):
+            with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
                 self.print_training_parameters(log_file, learning_rate, batch_size, loss_function, model_description)
 
-                metrics = Metrics(self.device)
-                last_validation_loss = 0.0
-                early_exit_count = 0
-                current_epoch = 0
+            metrics = Metrics(self.device)
+            last_validation_loss = 0.0
+            early_exit_count = 0
+            current_epoch = 0
+            current_mIOU = 0.0
 
-                for t in range(self.max_epochs):
-                    current_epoch = t
-                    metrics.reset_metrics()
+            for t in range(self.max_epochs):
+                current_epoch = t
+                metrics.reset_metrics()
 
-                    # Training loop
-                    model.train()
-                    for batch, (X, y) in enumerate(train_dataloader):
-                        # Compute prediction of current model and compute loss
-                        prediction = model(X)
-                        train_loss = loss_function(prediction, y)
+                # Training loop
+                model.train()
+                for batch, (X, y) in enumerate(train_dataloader):
+                    # Compute prediction of current model and compute loss
+                    prediction = model(X)
+                    train_loss = loss_function(prediction, y)
 
-                        # Do backpropagation
-                        train_loss.backward()
-                        optimizer.step()
-                        optimizer.zero_grad(set_to_none=True)
+                    # Do backpropagation
+                    train_loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad(set_to_none=True)
 
-                    # Validation loop
-                    model.eval()
-                    validation_loss = 0
-                    sigmoid = nn.Sigmoid().to(self.device)
-                    with torch.no_grad():
-                        for X, y in self.val_dataset:
-                            # Predict output of one validation sample
-                            prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
-                            validation_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
+                # Validation loop
+                model.eval()
+                validation_loss = 0
+                sigmoid = nn.Sigmoid().to(self.device)
+                with torch.no_grad():
+                    for X, y in self.val_dataset:
+                        # Predict output of one validation sample
+                        prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
+                        validation_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
 
-                            # Update metrics (accuracy, precision, recall, f1) of test samples.
-                            prediction = sigmoid(prediction)
-                            prediction_conv = prediction.reshape((dim_x ** 3))
-                            label_conv = y.reshape((dim_x ** 3)).int()
-                            metrics.update(prediction_conv, label_conv)
-                    metrics.compute()
-                    validation_loss /= len(self.val_dataset)
+                        # Update metrics (accuracy, precision, recall, f1) of test samples.
+                        prediction = sigmoid(prediction)
+                        prediction_conv = prediction.reshape((dim_x ** 3))
+                        label_conv = y.reshape((dim_x ** 3)).int()
+                        metrics.update(prediction_conv, label_conv)
+                metrics.compute()
+                validation_loss /= len(self.val_dataset)
 
+                with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
                     self.print_epoch(log_file, t, metrics, validation_loss)
-                    metrics.append()
+                metrics.append()
 
-                    # Check if validation loss was not improved over last few iterations = early exit
-                    if t > self.min_epochs and validation_loss > last_validation_loss:
-                        log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
-                        print(log_str)
-                        log_file.write(log_str)
-                        early_exit_count += 1
-                        last_validation_loss = validation_loss
-                    else:
-                        early_exit_count = 0
-                        last_validation_loss = validation_loss
-                    if early_exit_count >= self.early_exit_iterations:
-                        log_str = f'   => Terminated due to early exit\n'
-                        print(log_str)
-                        log_file.write(log_str)
-                        break
-
-                # If current model outperforms current best model in grid search, then save parameters
-                if metrics.mIOU > best_mIOU:
-                    self.loss_function = loss_function
-                    self.learning_rate = learning_rate
-                    self.batch_size = batch_size
-                    best_mIOU = metrics.mIOU
-
-                    log_str = f'=> Found new best performing parameters (mIOU = {metrics.mIOU}):\n' \
-                              f'   Learning rate: {self.learning_rate}\n' \
-                              f'   Batch size:    {self.batch_size}\n' \
-                              f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
+                # Check if validation loss was not improved over last few iterations = early exit
+                if t > self.min_epochs and validation_loss > last_validation_loss:
+                    log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
                     print(log_str)
+                    with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
+                        log_file.write(log_str)
+                    early_exit_count += 1
+                    last_validation_loss = validation_loss
+                else:
+                    early_exit_count = 0
+                    last_validation_loss = validation_loss
+                    current_mIOU = metrics.mIOU
+                if early_exit_count >= self.early_exit_iterations:
+                    log_str = f'   => Terminated due to early exit\n'
+                    print(log_str)
+                    with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
+                        log_file.write(log_str)
+                    break
+
+            # If current model outperforms current best model in grid search, then save parameters
+            if current_mIOU > best_mIOU:
+                self.loss_function = loss_function
+                self.learning_rate = learning_rate
+                self.batch_size = batch_size
+                best_mIOU = current_mIOU
+
+                log_str = f'=> Found new best performing parameters (mIOU = {current_mIOU}):\n' \
+                          f'   Learning rate: {self.learning_rate}\n' \
+                          f'   Batch size:    {self.batch_size}\n' \
+                          f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
+                print(log_str)
+                with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
                     log_file.write(log_str)
 
-                with (open(f'{self.pred_folder}grid_search.csv', 'a', encoding='utf-8') as csv_file):
-                    csv_file.write(f'{self.loss_function.__class__.__name__},{vars(self.loss_function)},'
-                                   f'{learning_rate},{batch_size},{current_epoch},{metrics.accuracy},'
-                                   f'{metrics.precision},{metrics.recall},{metrics.f1_score},{metrics.mIOU}\n')
+            with (open(f'{self.pred_folder}grid_search.csv', 'a', encoding='utf-8') as csv_file):
+                csv_file.write(f'{self.loss_function.__class__.__name__};{vars(self.loss_function)};'
+                               f'{learning_rate};{batch_size};{current_epoch + 1};{metrics.accuracy};'
+                               f'{metrics.precision};{metrics.recall};{metrics.f1_score};{metrics.mIOU}\n')
 
-                metrics.reset_metrics()
-                metrics.reset_lists()
+            metrics.reset_metrics()
+            metrics.reset_lists()
 
         log_str = f'=> Grid search done, best performing parameters:\n' \
                   f'   Learning rate: {self.learning_rate}\n' \
                   f'   Batch size:    {self.batch_size}\n' \
                   f'   Loss function: {self.loss_function.__class__.__name__}{vars(self.loss_function)}\n'
         print(log_str)
-        # TODO: immediately try best model on test data set (save each best model)?
 
     def trainonce(self):
         # Prepare datasets and dataloaders
@@ -419,74 +488,83 @@ class SDFTrainer:
         optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
 
         date = time.strftime('%Y%m%d%H%M')
-        with (open(f'{self.pred_folder}{date}_test_log.txt', 'w', encoding='utf-8') as log_file):
+        with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
             self.print_training_parameters(log_file, self.learning_rate, self.batch_size, loss_function,
                                            model_description)
 
-            train_losses = []
-            test_losses = []
-            metrics = Metrics(self.device)
-            last_test_loss = 0.0
-            early_exit_count = 0
+        train_losses = []
+        test_losses = []
+        metrics = Metrics(self.device)
+        last_test_loss = 0.0
+        early_exit_count = 0
+        model_params = model.state_dict()
 
-            for t in range(self.max_epochs):
-                # Training loop
-                model.train()
-                train_loss = 0
-                for batch, (X, y) in enumerate(train_dataloader):
-                    # Compute prediction of current model and compute loss
-                    prediction = model(X)
-                    train_loss = loss_function(prediction, y)
+        for t in range(self.max_epochs):
+            # Training loop
+            model.train()
+            train_loss = 0
+            for batch, (X, y) in enumerate(train_dataloader):
+                # Compute prediction of current model and compute loss
+                prediction = model(X)
+                train_loss = loss_function(prediction, y)
 
-                    # Do backpropagation
-                    train_loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad(set_to_none=True)
+                # Do backpropagation
+                train_loss.backward()
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
 
-                train_losses.append(train_loss.item())
+            train_losses.append(train_loss.item())
 
-                # Test loop
-                model.eval()
-                test_loss = 0
-                sigmoid = nn.Sigmoid().to(self.device)
-                with torch.no_grad():
-                    for X, y in self.test_dataset:
-                        # Predict output of one test sample
-                        prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
-                        test_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
+            # Test loop
+            model.eval()
+            test_loss = 0
+            sigmoid = nn.Sigmoid().to(self.device)
+            with torch.no_grad():
+                for X, y in self.test_dataset:
+                    # Predict output of one test sample
+                    prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
+                    test_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
 
-                        # Update metrics (accuracy, precision, recall, f1) of test samples
-                        prediction = sigmoid(prediction)
-                        prediction_conv = prediction.reshape((dim_x ** 3))
-                        label_conv = y.reshape((dim_x ** 3)).int()
-                        metrics.update(prediction_conv, label_conv)
-                metrics.compute()
-                test_loss /= len(self.test_dataset)
+                    # Update metrics (accuracy, precision, recall, f1) of test samples
+                    prediction = sigmoid(prediction)
+                    prediction_conv = prediction.reshape((dim_x ** 3))
+                    label_conv = y.reshape((dim_x ** 3)).int()
+                    metrics.update(prediction_conv, label_conv)
+            metrics.compute()
+            test_loss /= len(self.test_dataset)
 
+            with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
                 self.print_epoch(log_file, t, metrics, test_loss)
-                test_losses.append(test_loss)
-                metrics.append()
-                metrics.reset_metrics()
+            test_losses.append(test_loss)
+            metrics.append()
+            metrics.reset_metrics()
 
-                # Check if test loss was not improved over last few iterations = early exit
-                if t > self.min_epochs and test_loss > last_test_loss:
-                    log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
-                    print(log_str)
+            # Check if test loss was not improved over last few iterations = early exit
+            if t > self.min_epochs and test_loss > last_test_loss:
+                log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
+                print(log_str)
+                with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
                     log_file.write(log_str)
-                    early_exit_count += 1
-                    last_test_loss = test_loss
-                else:
-                    early_exit_count = 0
-                    last_test_loss = test_loss
-                if early_exit_count >= self.early_exit_iterations:
-                    log_str = f'   => Terminated due to early exit\n'
-                    print(log_str)
+                early_exit_count += 1
+                last_test_loss = test_loss
+            else:
+                early_exit_count = 0
+                last_test_loss = test_loss
+                model_params = model.state_dict()
+            if early_exit_count >= self.early_exit_iterations:
+                log_str = f'   => Terminated due to early exit\n'
+                print(log_str)
+                with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
                     log_file.write(log_str)
-                    break
+                break
 
         # Save some predicted samples to pred/ folder (to visualize later)
         sigmoid = nn.Sigmoid()
         for i in range(self.prediction_num):
+            # Load best model first in case there was an early exit
+            model.load_state_dict(model_params)
+            model.eval()
+
             o_path = f'{self.pred_folder}{date}_{str(i).zfill(6)}{self.pred_file_extension}'
             prediction = sigmoid(model(full_dataset[i][0].reshape((1, 1, 64, 64, 64))))
             sdf_writer = SDFWriter(o_path)
