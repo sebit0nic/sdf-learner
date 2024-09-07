@@ -201,28 +201,36 @@ class SDFUnetLevel3(nn.Module):
         return logits
 
 
-# TODO: test this
+# TODO: updated using stochastic gradient descent with a fixed learning rate of 0.01 and momentum of 0.9
+# TODO: try less depth (3 or 4)
 class SDFSegnet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv1 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv2 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv3 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv4 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv5 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv6 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv7 = nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=32, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv8 = nn.Conv3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv9 = nn.Conv3d(in_channels=256, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
+        self.conv10 = nn.Conv3d(in_channels=128, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv11 = nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv12 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
         self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
@@ -231,11 +239,13 @@ class SDFSegnet(nn.Module):
         logits = self.ReLU(logits)
         logits = self.conv2(logits)
         logits = self.ReLU(logits)
+        size1 = logits.size()
         logits, indices1 = self.max_pool(logits)
         logits = self.conv3(logits)
         logits = self.ReLU(logits)
         logits = self.conv4(logits)
         logits = self.ReLU(logits)
+        size2 = logits.size()
         logits, indices2 = self.max_pool(logits)
         logits = self.conv5(logits)
         logits = self.ReLU(logits)
@@ -243,24 +253,54 @@ class SDFSegnet(nn.Module):
         logits = self.ReLU(logits)
         logits = self.conv6(logits)
         logits = self.ReLU(logits)
+        size3 = logits.size()
         logits, indices3 = self.max_pool(logits)
-        logits = self.max_unpool(logits, indices3)
+        # logits = self.conv7(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # size4 = logits.size()
+        # logits, indices4 = self.max_pool(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # size5 = logits.size()
+        # logits, indices5 = self.max_pool(logits)
+        # logits = self.max_unpool(logits, indices5, size5)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.max_unpool(logits, indices4, size4)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv8(logits)
+        # logits = self.ReLU(logits)
+        # logits = self.conv9(logits)
+        # logits = self.ReLU(logits)
+        logits = self.max_unpool(logits, indices3, size3)
         logits = self.conv6(logits)
         logits = self.ReLU(logits)
         logits = self.conv6(logits)
         logits = self.ReLU(logits)
-        logits = self.conv7(logits)
+        logits = self.conv10(logits)
         logits = self.ReLU(logits)
-        logits = self.max_unpool(logits, indices2)
+        logits = self.max_unpool(logits, indices2, size2)
         logits = self.conv4(logits)
         logits = self.ReLU(logits)
-        logits = self.conv8(logits)
+        logits = self.conv11(logits)
         logits = self.ReLU(logits)
-        logits = self.max_unpool(logits, indices1)
+        logits = self.max_unpool(logits, indices1, size1)
         logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv9(logits)
-        logits = self.ReLU(logits)
+        logits = self.conv12(logits)
         return logits
 
 
