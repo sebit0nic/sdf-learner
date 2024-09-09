@@ -54,7 +54,7 @@ class FocalTverskyLoss(nn.Module):
         return torch.pow(1 - TI, self.gamma).mean()
 
 
-# TODO: implement FCN
+# TODO: create one new convolution per layer
 class SDFUnetLevel2(nn.Module):
     def __init__(self):
         super().__init__()
@@ -114,6 +114,7 @@ class SDFUnetLevel2(nn.Module):
         return logits
 
 
+# TODO: create one new convolution per layer
 class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -201,8 +202,7 @@ class SDFUnetLevel3(nn.Module):
         return logits
 
 
-# TODO: updated using stochastic gradient descent with a fixed learning rate of 0.01 and momentum of 0.9
-# TODO: try less depth (3 or 4)
+# TODO: create one new convolution per layer
 class SDFSegnet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -210,7 +210,7 @@ class SDFSegnet(nn.Module):
                                padding=(1, 1, 1))
         self.conv2 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv3 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
         self.conv4 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                padding=(1, 1, 1))
@@ -241,17 +241,15 @@ class SDFSegnet(nn.Module):
         logits = self.ReLU(logits)
         size1 = logits.size()
         logits, indices1 = self.max_pool(logits)
-        logits = self.conv3(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv4(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
         size2 = logits.size()
         logits, indices2 = self.max_pool(logits)
-        logits = self.conv5(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv6(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv6(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
         size3 = logits.size()
         logits, indices3 = self.max_pool(logits)
@@ -286,21 +284,21 @@ class SDFSegnet(nn.Module):
         # logits = self.conv9(logits)
         # logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices3, size3)
-        logits = self.conv6(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv6(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv10(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices2, size2)
-        logits = self.conv4(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv11(logits)
+        logits = self.conv2(logits)
         logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices1, size1)
         logits = self.conv2(logits)
         logits = self.ReLU(logits)
-        logits = self.conv12(logits)
+        logits = self.conv2(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv3(logits)
         return logits
 
 
@@ -364,9 +362,8 @@ class SDFTrainer:
 
     def train(self):
         if self.grid_search:
-            # loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
-            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
-            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
+            # loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
+            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
             #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([100])),
             #                   DiceLoss(),
             #                   TverskyLoss(0.1),
@@ -376,7 +373,7 @@ class SDFTrainer:
             #                   FocalTverskyLoss(0.5, 2),
             #                   FocalTverskyLoss(0.9, 2)]
             # learning_rates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-            # batch_sizes = [1, 2, 4, 8, 16, 32]
+            # batch_sizes = [2, 4, 8, 16, 32, 64]
             loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1]))]
             learning_rates = [0.001]
             batch_sizes = [2, 4, 8]
