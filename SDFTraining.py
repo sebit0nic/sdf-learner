@@ -54,28 +54,32 @@ class FocalTverskyLoss(nn.Module):
         return torch.pow(1 - TI, self.gamma).mean()
 
 
-# TODO: create one new convolution per layer
+# TODO: try batchnorm layers
 class SDFUnetLevel2(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=96, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
+        self.conv11 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv12 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv21 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv22 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv31 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv32 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv33 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv41 = nn.Conv3d(in_channels=96, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv42 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv51 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv52 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
         self.deconv1 = nn.ConvTranspose3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.deconv2 = nn.ConvTranspose3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(2, 2, 2),
@@ -84,69 +88,71 @@ class SDFUnetLevel2(nn.Module):
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
     def forward(self, x):
-        logits = self.conv1(x)
+        logits = self.conv11(x)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv12(logits)
         logits = self.ReLU(logits)
         skip1 = torch.clone(logits)
         logits = self.max_pool(logits)
-        logits = self.conv3(logits)
+        logits = self.conv21(logits)
         logits = self.ReLU(logits)
-        logits = self.conv4(logits)
+        logits = self.conv22(logits)
         logits = self.ReLU(logits)
         skip2 = torch.clone(logits)
         logits = self.max_pool(logits)
-        logits = self.conv5(logits)
+        logits = self.conv31(logits)
         logits = self.ReLU(logits)
-        logits = self.conv6(logits)
+        logits = self.conv32(logits)
         logits = self.ReLU(logits)
-        logits = self.conv6(logits)
+        logits = self.conv33(logits)
         logits = self.ReLU(logits)
         logits = self.deconv1(logits)
         logits = torch.cat((logits, skip2), dim=1)
-        logits = self.conv7(logits)
+        logits = self.conv41(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv42(logits)
         logits = self.ReLU(logits)
         logits = self.deconv2(logits)
         logits = torch.cat((logits, skip1), dim=1)
-        logits = self.conv8(logits)
+        logits = self.conv51(logits)
         logits = self.ReLU(logits)
-        logits = self.conv9(logits)
+        logits = self.conv52(logits)
         return logits
 
 
-# TODO: create one new convolution per layer
+# TODO: try batchnorm layers
 class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=192, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv10 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv11 = nn.Conv3d(in_channels=1, out_channels=8, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv11 = nn.Conv3d(in_channels=96, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv12 = nn.Conv3d(in_channels=8, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv12 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv21 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv13 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv22 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv14 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv31 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv15 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv32 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv41 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv42 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv51 = nn.Conv3d(in_channels=192, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv52 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv61 = nn.Conv3d(in_channels=96, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv62 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv71 = nn.Conv3d(in_channels=48, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv72 = nn.Conv3d(in_channels=16, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv73 = nn.Conv3d(in_channels=16, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
         self.deconv1 = nn.ConvTranspose3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
@@ -158,147 +164,138 @@ class SDFUnetLevel3(nn.Module):
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
 
     def forward(self, x):
-        logits = self.conv1(x)
-        logits = self.ReLU(logits)
-        logits = self.conv2(logits)
-        logits = self.ReLU(logits)
-        skip1 = torch.clone(logits)
-        logits = self.max_pool(logits)
-        logits = self.conv3(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv4(logits)
-        logits = self.ReLU(logits)
-        skip2 = torch.clone(logits)
-        logits = self.max_pool(logits)
-        logits = self.conv5(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv6(logits)
-        logits = self.ReLU(logits)
-        skip3 = torch.clone(logits)
-        logits = self.max_pool(logits)
-        logits = self.conv7(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv8(logits)
-        logits = self.ReLU(logits)
-        logits = self.deconv1(logits)
-        logits = torch.cat((logits, skip3), dim=1)
-        logits = self.conv9(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv10(logits)
-        logits = self.ReLU(logits)
-        logits = self.deconv2(logits)
-        logits = torch.cat((logits, skip2), dim=1)
-        logits = self.conv11(logits)
+        logits = self.conv11(x)
         logits = self.ReLU(logits)
         logits = self.conv12(logits)
         logits = self.ReLU(logits)
+        skip1 = torch.clone(logits)
+        logits = self.max_pool(logits)
+        logits = self.conv21(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv22(logits)
+        logits = self.ReLU(logits)
+        skip2 = torch.clone(logits)
+        logits = self.max_pool(logits)
+        logits = self.conv31(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv32(logits)
+        logits = self.ReLU(logits)
+        skip3 = torch.clone(logits)
+        logits = self.max_pool(logits)
+        logits = self.conv41(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv42(logits)
+        logits = self.ReLU(logits)
+        logits = self.deconv1(logits)
+        logits = torch.cat((logits, skip3), dim=1)
+        logits = self.conv51(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv52(logits)
+        logits = self.ReLU(logits)
+        logits = self.deconv2(logits)
+        logits = torch.cat((logits, skip2), dim=1)
+        logits = self.conv61(logits)
+        logits = self.ReLU(logits)
+        logits = self.conv62(logits)
+        logits = self.ReLU(logits)
         logits = self.deconv3(logits)
         logits = torch.cat((logits, skip1), dim=1)
-        logits = self.conv13(logits)
+        logits = self.conv71(logits)
         logits = self.ReLU(logits)
-        logits = self.conv14(logits)
+        logits = self.conv72(logits)
         logits = self.ReLU(logits)
-        logits = self.conv15(logits)
+        logits = self.conv73(logits)
         return logits
 
 
-# TODO: create one new convolution per layer
+# TODO: try batchnorm layers
 class SDFSegnet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv2 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv3 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv4 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv5 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv6 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv7 = nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv8 = nn.Conv3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv9 = nn.Conv3d(in_channels=256, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
-                               padding=(1, 1, 1))
-        self.conv10 = nn.Conv3d(in_channels=128, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv11 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv11 = nn.Conv3d(in_channels=64, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv12 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv12 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv21 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv22 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv31 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv32 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv41 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv42 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv51 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv52 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv61 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+                                padding=(1, 1, 1))
+        self.conv62 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
         self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1), return_indices=True)
         self.max_unpool = nn.MaxUnpool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
+        self.batch_norm11 = nn.BatchNorm3d(32)
+        self.batch_norm12 = nn.BatchNorm3d(32)
+        self.batch_norm21 = nn.BatchNorm3d(32)
+        self.batch_norm22 = nn.BatchNorm3d(32)
+        self.batch_norm31 = nn.BatchNorm3d(32)
+        self.batch_norm32 = nn.BatchNorm3d(32)
+        self.batch_norm41 = nn.BatchNorm3d(32)
+        self.batch_norm42 = nn.BatchNorm3d(32)
+        self.batch_norm51 = nn.BatchNorm3d(32)
+        self.batch_norm52 = nn.BatchNorm3d(32)
+        self.batch_norm61 = nn.BatchNorm3d(32)
+        self.batch_norm62 = nn.BatchNorm3d(32)
 
     def forward(self, x):
-        logits = self.conv1(x)
+        logits = self.conv11(x)
+        logits = self.batch_norm11(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv12(logits)
+        logits = self.batch_norm12(logits)
         logits = self.ReLU(logits)
         size1 = logits.size()
         logits, indices1 = self.max_pool(logits)
-        logits = self.conv2(logits)
+        logits = self.conv21(logits)
+        logits = self.batch_norm21(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv22(logits)
+        logits = self.batch_norm22(logits)
         logits = self.ReLU(logits)
         size2 = logits.size()
         logits, indices2 = self.max_pool(logits)
-        logits = self.conv2(logits)
+        logits = self.conv31(logits)
+        logits = self.batch_norm31(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv32(logits)
+        logits = self.batch_norm32(logits)
         logits = self.ReLU(logits)
         size3 = logits.size()
         logits, indices3 = self.max_pool(logits)
-        # logits = self.conv7(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # size4 = logits.size()
-        # logits, indices4 = self.max_pool(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # size5 = logits.size()
-        # logits, indices5 = self.max_pool(logits)
-        # logits = self.max_unpool(logits, indices5, size5)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.max_unpool(logits, indices4, size4)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv8(logits)
-        # logits = self.ReLU(logits)
-        # logits = self.conv9(logits)
-        # logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices3, size3)
-        logits = self.conv2(logits)
+        logits = self.conv41(logits)
+        logits = self.batch_norm41(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv42(logits)
+        logits = self.batch_norm42(logits)
         logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices2, size2)
-        logits = self.conv2(logits)
+        logits = self.conv51(logits)
+        logits = self.batch_norm51(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
+        logits = self.conv52(logits)
+        logits = self.batch_norm52(logits)
         logits = self.ReLU(logits)
         logits = self.max_unpool(logits, indices1, size1)
-        logits = self.conv2(logits)
+        logits = self.conv61(logits)
+        logits = self.batch_norm61(logits)
         logits = self.ReLU(logits)
-        logits = self.conv2(logits)
-        logits = self.ReLU(logits)
-        logits = self.conv3(logits)
+        logits = self.conv62(logits)
         return logits
 
 
@@ -440,6 +437,7 @@ class SDFTrainer:
                 model.eval()
                 validation_loss = 0
                 sigmoid = nn.Sigmoid().to(self.device)
+                # TODO: do batch wise testing (maybe batchnorm works then?)
                 with torch.no_grad():
                     for X, y in self.val_dataset:
                         # Predict output of one validation sample
