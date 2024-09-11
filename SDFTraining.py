@@ -1,5 +1,6 @@
 import numpy as np
 import torch.utils.data
+import torch.amp
 import torchinfo
 import itertools
 import time
@@ -54,7 +55,6 @@ class FocalTverskyLoss(nn.Module):
         return torch.pow(1 - TI, self.gamma).mean()
 
 
-# TODO: try batchnorm layers
 class SDFUnetLevel2(nn.Module):
     def __init__(self):
         super().__init__()
@@ -120,7 +120,6 @@ class SDFUnetLevel2(nn.Module):
         return logits
 
 
-# TODO: try batchnorm layers
 class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
@@ -208,7 +207,6 @@ class SDFUnetLevel3(nn.Module):
         return logits
 
 
-# TODO: try batchnorm layers
 class SDFSegnet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -406,6 +404,9 @@ class SDFTrainer:
             model = self.init_model()
             model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            torch.set_float32_matmul_precision('medium')
+            torch.backends.cudnn.benchmark = True
+            scaler = torch.amp.GradScaler()
 
             date = time.strftime('%Y%m%d%H%M')
             with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
@@ -424,25 +425,27 @@ class SDFTrainer:
                 # Training loop
                 model.train()
                 for batch, (X, y) in enumerate(train_dataloader):
+                    optimizer.zero_grad(set_to_none=True)
+
                     # Compute prediction of current model and compute loss
-                    prediction = model(X)
-                    train_loss = loss_function(prediction, y)
+                    with torch.autocast(device_type=self.device):
+                        prediction = model(X)
+                        train_loss = loss_function(prediction, y)
 
                     # Do backpropagation
-                    train_loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad(set_to_none=True)
+                    scaler.scale(train_loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
 
                 # Validation loop
                 model.eval()
-                validation_loss = 0
+                validation_loss = torch.zeros(1, device=self.device)
                 sigmoid = nn.Sigmoid().to(self.device)
-                # TODO: do batch wise testing (maybe batchnorm works then?)
                 with torch.no_grad():
                     for X, y in self.val_dataset:
                         # Predict output of one validation sample
                         prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
-                        validation_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
+                        validation_loss += loss_function(prediction, y.unsqueeze(dim=0))
 
                         # Update metrics (accuracy, precision, recall, f1) of test samples.
                         prediction = sigmoid(prediction)
@@ -453,7 +456,7 @@ class SDFTrainer:
                 validation_loss /= len(self.val_dataset)
 
                 with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
-                    self.print_epoch(log_file, t, metrics, validation_loss)
+                    self.print_epoch(log_file, t, metrics, validation_loss.item())
                 metrics.append()
 
                 # Check if validation loss was not improved over last few iterations = early exit
@@ -521,6 +524,9 @@ class SDFTrainer:
         model = self.init_model()
         model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        torch.set_float32_matmul_precision('medium')
+        torch.backends.cudnn.benchmark = True
+        scaler = torch.amp.GradScaler()
 
         date = time.strftime('%Y%m%d%H%M')
         with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
@@ -539,26 +545,29 @@ class SDFTrainer:
             model.train()
             train_loss = 0
             for batch, (X, y) in enumerate(train_dataloader):
+                optimizer.zero_grad(set_to_none=True)
+
                 # Compute prediction of current model and compute loss
-                prediction = model(X)
-                train_loss = loss_function(prediction, y)
+                with torch.autocast(device_type=self.device):
+                    prediction = model(X)
+                    train_loss = loss_function(prediction, y)
 
                 # Do backpropagation
-                train_loss.backward()
-                optimizer.step()
-                optimizer.zero_grad(set_to_none=True)
+                scaler.scale(train_loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
 
             train_losses.append(train_loss.item())
 
             # Test loop
             model.eval()
-            test_loss = 0
+            test_loss = torch.zeros(1, device=self.device)
             sigmoid = nn.Sigmoid().to(self.device)
             with torch.no_grad():
                 for X, y in self.test_dataset:
                     # Predict output of one test sample
                     prediction = model(X.reshape((1, 1, dim_x, dim_y, dim_z)))
-                    test_loss += loss_function(prediction, y.unsqueeze(dim=0)).item()
+                    test_loss += loss_function(prediction, y.unsqueeze(dim=0))
 
                     # Update metrics (accuracy, precision, recall, f1) of test samples
                     prediction = sigmoid(prediction)
@@ -569,8 +578,8 @@ class SDFTrainer:
             test_loss /= len(self.test_dataset)
 
             with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
-                self.print_epoch(log_file, t, metrics, test_loss)
-            test_losses.append(test_loss)
+                self.print_epoch(log_file, t, metrics, test_loss.item())
+            test_losses.append(test_loss.item())
             metrics.append()
             metrics.reset_metrics()
 

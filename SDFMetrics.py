@@ -14,7 +14,7 @@ class Metrics:
         self.recall_list = []
         self.f1_list = []
         self.mIOU_list = []
-        self.confusion_matrix = torch.zeros((2, 2))
+        self.confusion_matrix = torch.zeros((2, 2), device=device)
         # Raw numbers being computed on
         self.accuracy = 0.0
         self.precision = 0.0
@@ -22,12 +22,12 @@ class Metrics:
         self.f1_score = 0.0
         self.mIOU = 0.0
         # Containers that do running computation of metrics
-        self.accuracy_metric = BinaryAccuracy().to(device)
-        self.precision_metric = BinaryPrecision().to(device)
-        self.recall_metric = BinaryRecall().to(device)
-        self.f1_metric = BinaryF1Score().to(device)
+        self.accuracy_metric = BinaryAccuracy(device=device)
+        self.precision_metric = BinaryPrecision(device=device)
+        self.recall_metric = BinaryRecall(device=device)
+        self.f1_metric = BinaryF1Score(device=device)
         self.mIOU_metric = BinaryJaccardIndex().to(device)
-        self.confusion_metric = BinaryConfusionMatrix(normalize='pred').to(device)
+        self.confusion_metric = BinaryConfusionMatrix(device=device, normalize='pred')
 
     def update(self, prediction, label):
         self.accuracy_metric.update(prediction, label)
