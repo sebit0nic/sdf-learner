@@ -123,41 +123,41 @@ class SDFUnetLevel2(nn.Module):
 class SDFUnetLevel3(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv11 = nn.Conv3d(in_channels=1, out_channels=16, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv11 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv12 = nn.Conv3d(in_channels=16, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv12 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv21 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv21 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv22 = nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv22 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv31 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv31 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv32 = nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv32 = nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv41 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv41 = nn.Conv3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv42 = nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv42 = nn.Conv3d(in_channels=256, out_channels=512, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv51 = nn.Conv3d(in_channels=384, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv51 = nn.Conv3d(in_channels=768, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv52 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv52 = nn.Conv3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv61 = nn.Conv3d(in_channels=192, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv61 = nn.Conv3d(in_channels=384, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv62 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv62 = nn.Conv3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv71 = nn.Conv3d(in_channels=96, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv71 = nn.Conv3d(in_channels=192, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv72 = nn.Conv3d(in_channels=32, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv72 = nn.Conv3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.conv73 = nn.Conv3d(in_channels=32, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
+        self.conv73 = nn.Conv3d(in_channels=64, out_channels=1, kernel_size=(3, 3, 3), stride=(1, 1, 1),
                                 padding=(1, 1, 1))
-        self.deconv1 = nn.ConvTranspose3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(2, 2, 2),
+        self.deconv1 = nn.ConvTranspose3d(in_channels=512, out_channels=512, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.deconv2 = nn.ConvTranspose3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(2, 2, 2),
+        self.deconv2 = nn.ConvTranspose3d(in_channels=256, out_channels=256, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
-        self.deconv3 = nn.ConvTranspose3d(in_channels=64, out_channels=64, kernel_size=(3, 3, 3), stride=(2, 2, 2),
+        self.deconv3 = nn.ConvTranspose3d(in_channels=128, out_channels=128, kernel_size=(3, 3, 3), stride=(2, 2, 2),
                                           padding=(1, 1, 1), output_padding=(1, 1, 1))
         self.ReLU = nn.ReLU()
         self.max_pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=(1, 1, 1))
@@ -287,7 +287,7 @@ class SDFTrainer:
         self.test_dataset = None
 
         # Fixed parameters
-        self.min_epochs = 10
+        self.min_epochs = 20
         self.max_epochs = 100
         self.early_exit_iterations = 3
         self.pred_folder = 'pred/'
@@ -334,24 +334,15 @@ class SDFTrainer:
 
     def train(self):
         if self.grid_search:
-            # loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
-            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
-            #                   nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
-            #                   DiceLoss(),
-            #                   FocalTverskyLoss(0.1, 2),
-            #                   FocalTverskyLoss(0.5, 2),
-            #                   FocalTverskyLoss(0.9, 2)]
-            # learning_rates = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-            # batch_sizes = [2, 4, 8, 16, 32]
-            loss_functions = [DiceLoss(),
-                              TverskyLoss(0.1),
-                              TverskyLoss(0.5),
-                              TverskyLoss(0.9),
+            loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
+                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
+                              nn.BCEWithLogitsLoss(pos_weight=torch.tensor([10])),
+                              DiceLoss(),
                               FocalTverskyLoss(0.1, 2),
                               FocalTverskyLoss(0.5, 2),
                               FocalTverskyLoss(0.9, 2)]
-            learning_rates = [0.001]
-            batch_sizes = [8]
+            learning_rates = [0.001, 0.0001, 0.00001]
+            batch_sizes = [8, 4, 2, 1]
             grid = itertools.product(loss_functions, learning_rates, batch_sizes)
             self.gridsearch(grid)
 
@@ -373,7 +364,7 @@ class SDFTrainer:
             csv_file.write(f'loss_function;parameters;learning_rate;batch_size;epochs;accuracy;precision;recall;'
                            f'f1_score;m_iou\n')
         for loss_function, learning_rate, batch_size in grid:
-            train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=False)
+            train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True)
 
             # Get dimension of input data (most likely always 64 * 64 * 64)
             train_features, _ = next(iter(train_dataloader))
@@ -493,7 +484,7 @@ class SDFTrainer:
         if self.train_dataset is None or self.test_dataset is None:
             split = [0.8, 0.2]
             self.train_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
-        train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=False)
+        train_dataloader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
 
         # Get dimension of input data (most likely always 64 * 64 * 64)
         train_features, _ = next(iter(train_dataloader))
