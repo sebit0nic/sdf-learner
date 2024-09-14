@@ -341,7 +341,7 @@ class SDFTrainer:
                               FocalTverskyLoss(0.1, 2),
                               FocalTverskyLoss(0.5, 2),
                               FocalTverskyLoss(0.9, 2)]
-            learning_rates = [0.001, 0.0001, 0.00001]
+            learning_rates = [0.001, 0.0001]
             batch_sizes = [8, 4, 2, 1]
             grid = itertools.product(loss_functions, learning_rates, batch_sizes)
             self.gridsearch(grid)
@@ -374,7 +374,7 @@ class SDFTrainer:
             loss_function = loss_function.to(self.device)
             model = self.init_model()
             model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), eps=1e-4, lr=learning_rate)
             torch.set_float32_matmul_precision('medium')
             torch.backends.cudnn.benchmark = True
             scaler = torch.amp.GradScaler()
@@ -407,6 +407,8 @@ class SDFTrainer:
                     scaler.scale(train_loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
+                    # train_loss.backward()
+                    # optimizer.step()
 
                 # Validation loop
                 model.eval()
@@ -431,7 +433,7 @@ class SDFTrainer:
                 metrics.append()
 
                 # Check if validation loss was not improved over last few iterations = early exit
-                if t >= self.min_epochs and validation_loss >= last_validation_loss:
+                if t >= self.min_epochs and (validation_loss >= last_validation_loss or torch.isnan(validation_loss)):
                     log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
                     print(log_str)
                     with (open(f'{self.pred_folder}{date}_validation_log.txt', 'a', encoding='utf-8') as log_file):
@@ -494,7 +496,7 @@ class SDFTrainer:
         loss_function = self.loss_function.to(self.device)
         model = self.init_model()
         model_description = torchinfo.summary(model, (1, 1, dim_x, dim_y, dim_z), verbose=0)
-        optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(), eps=1e-4, lr=self.learning_rate)
         torch.set_float32_matmul_precision('medium')
         torch.backends.cudnn.benchmark = True
         scaler = torch.amp.GradScaler()
@@ -527,6 +529,8 @@ class SDFTrainer:
                 scaler.scale(train_loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
+                # train_loss.backward()
+                # optimizer.step()
 
             train_losses.append(train_loss.item())
 
@@ -555,7 +559,7 @@ class SDFTrainer:
             metrics.reset_metrics()
 
             # Check if test loss was not improved over last few iterations = early exit
-            if t >= self.min_epochs and test_loss >= last_test_loss:
+            if t >= self.min_epochs and (test_loss >= last_test_loss or torch.isnan(test_loss)):
                 log_str = f'   => No improvement this epoch ({early_exit_count + 1} in row)\n'
                 print(log_str)
                 with (open(f'{self.pred_folder}{date}_test_log.txt', 'a', encoding='utf-8') as log_file):
