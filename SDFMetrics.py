@@ -1,3 +1,10 @@
+"""
+File name: SDFMetrics.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Handling of model performance statistics during training
+"""
+
 import matplotlib.pyplot as plt
 import seaborn as sn
 import torch
@@ -7,6 +14,8 @@ from torchmetrics.classification import BinaryJaccardIndex
 
 
 class Metrics:
+    """Data object used to store, compute, and update model performance metrics"""
+
     def __init__(self, device):
         # List of values over epochs for plotting
         self.accuracy_list = []
@@ -30,6 +39,7 @@ class Metrics:
         self.confusion_metric = BinaryConfusionMatrix(device=device, normalize='pred')
 
     def update(self, prediction, label):
+        """Update metrics during epoch"""
         self.accuracy_metric.update(prediction, label)
         self.precision_metric.update(prediction, label)
         self.recall_metric.update(prediction, label)
@@ -38,6 +48,7 @@ class Metrics:
         self.confusion_metric.update(prediction, label)
 
     def compute(self):
+        """Compute metrics after epoch"""
         self.accuracy = self.accuracy_metric.compute().item()
         self.precision = self.precision_metric.compute().item()
         self.recall = self.recall_metric.compute().item()
@@ -46,6 +57,7 @@ class Metrics:
         self.confusion_matrix = self.confusion_metric.compute()
 
     def append(self):
+        """Append metrics to lists to visualize as graph later"""
         self.accuracy_list.append(self.accuracy)
         self.precision_list.append(self.precision)
         self.recall_list.append(self.recall)
@@ -53,6 +65,7 @@ class Metrics:
         self.mIOU_list.append(self.mIOU)
 
     def plot(self, pred_folder, date):
+        """Plot metrics as graph"""
         plt.plot(self.accuracy_list, color='cyan', label='Accuracy')
         plt.plot(self.mIOU_list, color='orange', label='mIOU')
         plt.plot(self.precision_list, color='green', label='Precision')
@@ -72,6 +85,7 @@ class Metrics:
         plt.show()
 
     def reset_metrics(self):
+        """Reset metrics back to initial state"""
         self.accuracy = 0.0
         self.precision = 0.0
         self.recall = 0.0
@@ -85,6 +99,7 @@ class Metrics:
         self.confusion_metric.reset()
 
     def reset_lists(self):
+        """Reset metric lists back to initial state"""
         self.accuracy_list.clear()
         self.precision_list.clear()
         self.recall_list.clear()

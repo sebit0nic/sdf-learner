@@ -1,3 +1,10 @@
+"""
+File name: SDFFileHandler.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Handling of all file I/O related tasks
+"""
+
 import os
 import numpy as np
 import torch
@@ -6,11 +13,14 @@ from SDFVisualizer import ProgressBar
 
 
 class SDFReader:
+    """Object for reading tasks on file"""
+
     def __init__(self, file_name):
         self.file_name = file_name
 
     @staticmethod
     def compute_dimensions_from_file(file):
+        """Compute number of points in each dimension using the file size"""
         file.seek(0, os.SEEK_END)
         # BIN file: each distance / label is float32 / int32 => divide by 4
         size = np.round(np.power(file.tell() // 4, 1 / 3)).astype(int)
@@ -18,6 +28,7 @@ class SDFReader:
         return size
 
     def read_points_from_bin(self, is_label, debug=True):
+        """Read either class labels or point data from file"""
         if debug:
             print('=> Reading in points from bin...')
             print('')
@@ -32,6 +43,7 @@ class SDFReader:
         return points
 
     def read_dataset_from_bin(self, device, sample_num, is_label, debug=True):
+        """Deprecated"""
         # Initialize array by using first available sample.
         if is_label:
             file_path = f'{os.getcwd()}\\{self.file_name}sample000000.bin'
@@ -68,6 +80,7 @@ class SDFReader:
         return torch.as_tensor(points, dtype=torch.float32, device=device)
 
     def read_sample_from_bin(self, device, item, is_label):
+        """Read either labels or distances from file for training dataset"""
         if is_label:
             file_path = f'{os.getcwd()}\\{self.file_name}sample{item:06d}.bin'
         else:
@@ -85,10 +98,13 @@ class SDFReader:
 
 
 class SDFWriter:
+    """Object for writing tasks on file"""
+
     def __init__(self, file_name):
         self.file_name = file_name
 
     def write_points(self, points_of_interest, debug=True):
+        """Write ground truth or prediction class labels to file"""
         file_path = os.getcwd() + '\\' + self.file_name
         file = open(file_path, 'wb')
         if debug:

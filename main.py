@@ -1,3 +1,10 @@
+"""
+File name: main.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Main entry point of program, handling of user parameters
+"""
+
 import numpy as np
 import argparse
 import time
@@ -63,6 +70,7 @@ if __name__ == "__main__":
     time.sleep(2)
     print('')
 
+    # Do conversion of one triangle mesh to SDF (experimental)
     if args.generate_one is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.generate_one).zfill(6)}{in_file_postfix}{in_file_extension}'
         o_path = (f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}'
@@ -78,6 +86,7 @@ if __name__ == "__main__":
         sdf.tofile(file)
         file.close()
 
+    # Do conversion of multiple triangle meshes to SDFs (experimental)
     if args.generate_all is not None:
         x = np.linspace(0, sample_dimension - 1, sample_dimension)
         y = np.linspace(0, sample_dimension - 1, sample_dimension)
@@ -93,6 +102,7 @@ if __name__ == "__main__":
             sdf.tofile(file)
             file.close()
 
+    # Compute the ground truth out of one SDF
     if args.compute_one is not None:
         i_path = (f'{sample_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}'
                   f'{sample_file_extension}')
@@ -105,6 +115,7 @@ if __name__ == "__main__":
         sdf_writer = SDFWriter(o_path)
         sdf_writer.write_points(points_of_interest)
 
+    # Compute the ground truths out of multiple SDFs
     if args.compute_all is not None:
         for i in range(start_sample_num, sample_num):
             print(f'=> Computing sample {i + 1}')
@@ -118,6 +129,7 @@ if __name__ == "__main__":
             sdf_writer = SDFWriter(o_path)
             sdf_writer.write_points(points_of_interest, False)
 
+    # Visualize SDF or ground truth as 3D point cloud
     if args.visualize is not None:
         i_path = str(args.visualize)
         sdf_reader = SDFReader(i_path)
@@ -135,6 +147,7 @@ if __name__ == "__main__":
         else:
             print(f'Invalid folder \'{folder}\' found.')
 
+    # Train model on SDF data and ground truth
     if args.train is not None:
         trainer = SDFTrainer(str(args.train), args.grid_search)
         trainer.train()

@@ -1,3 +1,10 @@
+"""
+File name: SDFTraining.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Handling of machine learning training
+"""
+
 import numpy as np
 import torch.utils.data
 import torch.amp
@@ -14,6 +21,8 @@ from SDFFileHandler import SDFWriter
 
 
 class DiceLoss(nn.Module):
+    """Implementation of dice loss function used during training"""
+
     def __init__(self):
         super(DiceLoss, self).__init__()
         self.sigmoid = nn.Sigmoid()
@@ -26,6 +35,8 @@ class DiceLoss(nn.Module):
 
 
 class TverskyLoss(nn.Module):
+    """Implementation of tversky loss function used during training"""
+
     def __init__(self, beta=0.5):
         super(TverskyLoss, self).__init__()
         self.beta = beta
@@ -40,6 +51,8 @@ class TverskyLoss(nn.Module):
 
 
 class FocalTverskyLoss(nn.Module):
+    """Implementation of focal tversky loss function used during training"""
+
     def __init__(self, beta=0.5, gamma=2):
         super(FocalTverskyLoss, self).__init__()
         self.beta = beta
@@ -56,6 +69,8 @@ class FocalTverskyLoss(nn.Module):
 
 
 class SDFUnetLevel2(nn.Module):
+    """Implementation of 2-level-deep U-Net architecture"""
+
     def __init__(self):
         super().__init__()
         self.conv11 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
@@ -121,6 +136,8 @@ class SDFUnetLevel2(nn.Module):
 
 
 class SDFUnetLevel3(nn.Module):
+    """Implementation of 3-level-deep U-Net architecture"""
+
     def __init__(self):
         super().__init__()
         self.conv11 = nn.Conv3d(in_channels=1, out_channels=32, kernel_size=(3, 3, 3), stride=(1, 1, 1),
@@ -208,6 +225,8 @@ class SDFUnetLevel3(nn.Module):
 
 
 class SDFSegnet(nn.Module):
+    """Implementation of SegNet architecture (experimental)"""
+
     def __init__(self):
         super().__init__()
         self.conv11 = nn.Conv3d(in_channels=1, out_channels=64, kernel_size=(3, 3, 3), stride=(1, 1, 1),
@@ -275,6 +294,8 @@ class SDFSegnet(nn.Module):
 
 
 class SDFTrainer:
+    """Object to handle machine learning training tasks"""
+
     def __init__(self, model_type, grid_search):
         # Check if we have GPU available to run tensors on
         self.device = 'cpu'
@@ -302,6 +323,7 @@ class SDFTrainer:
         self.loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])).to(self.device)
 
     def init_model(self):
+        """Initialize model architecture used for training based on given token"""
         if self.model_type == 'unet2':
             return SDFUnetLevel2().to(self.device)
         elif self.model_type == 'unet3':
@@ -312,6 +334,7 @@ class SDFTrainer:
             raise ValueError(f'Unknown model type \"{self.model_type}\"')
 
     def print_training_parameters(self, log_file, learning_rate, batch_size, loss_function, model_description):
+        """Print hyperparameters used during training"""
         log_str = f'=> Starting training...\n' \
                   f'   Learning rate: {learning_rate}\n' \
                   f'   Batch size:    {batch_size}\n' \
@@ -321,6 +344,7 @@ class SDFTrainer:
         print(log_str)
 
     def print_epoch(self, log_file, epoch, metrics, loss):
+        """Print statistics computed during one training epoch"""
         log_str = f'=> Epoch ({epoch + 1})\n' \
                   f'   => Validation/test set summary:\n' \
                   f'    - Accuracy:  {metrics.accuracy * 100:.2f}% ({metrics.accuracy})\n' \
@@ -333,6 +357,7 @@ class SDFTrainer:
         print(log_str)
 
     def train(self):
+        """Train the model either once or using grid search on some selected hyperparameters"""
         if self.grid_search:
             loss_functions = [nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])),
                               nn.BCEWithLogitsLoss(pos_weight=torch.tensor([0.1])),
@@ -353,6 +378,7 @@ class SDFTrainer:
             self.trainonce()
 
     def gridsearch(self, grid):
+        """Do grid search run yielding best performing hyperparameter combination"""
         # Prepare datasets
         full_dataset = SDFDataset('samples\\', 'out\\', 1000)
         if self.train_dataset is None or self.val_dataset is None or self.test_dataset is None:
@@ -407,8 +433,6 @@ class SDFTrainer:
                     scaler.scale(train_loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
-                    # train_loss.backward()
-                    # optimizer.step()
 
                 # Validation loop
                 model.eval()
@@ -481,6 +505,7 @@ class SDFTrainer:
         print(log_str)
 
     def trainonce(self):
+        """Do training run yielding test performance and predictions"""
         # Prepare datasets and dataloaders
         full_dataset = SDFDataset('samples\\', 'out\\', 1000)
         if self.train_dataset is None or self.test_dataset is None:
@@ -529,8 +554,6 @@ class SDFTrainer:
                 scaler.scale(train_loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
-                # train_loss.backward()
-                # optimizer.step()
 
             train_losses.append(train_loss.item())
 

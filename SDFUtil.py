@@ -1,9 +1,18 @@
+"""
+File name: SDFUtil.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Computation of ground truth labels out of SDF data
+"""
+
 import numpy as np
 
 from SDFVisualizer import ProgressBar
 
 
 class SDFCurvature:
+    """Object used to compute points of high curvature"""
+
     def __init__(self, epsilon, tolerance, lower_percentile, upper_percentile):
         self.epsilon = epsilon
         self.tolerance = tolerance
@@ -11,6 +20,7 @@ class SDFCurvature:
         self.upper_percentile = upper_percentile
 
     def calculate_curvature(self, points, debug=True):
+        """Compute gaussian curvature for each point in given array"""
         if debug:
             print('=> Computing numerical derivative and curvature of points...')
         sorted_points = []
@@ -71,6 +81,7 @@ class SDFCurvature:
         return curvatures, sorted_points
 
     def classify_points(self, points, sorted_points, debug=True):
+        """Assign class to each point based on sorted curvature, meaning to find points of high curvature"""
         if debug:
             print('=> Sorting curvature of points...')
         sorted_points.sort(key=lambda elem: abs(elem[3]), reverse=True)
@@ -78,10 +89,12 @@ class SDFCurvature:
         size = np.shape(points)[0]
         points_of_interest = np.zeros((size, size, size), dtype=np.int32)
         s = np.array(curv_list)
+        # Take upper defined percentile of points with high curvature to reduce number of points
         p = np.percentile(s, np.array([self.lower_percentile, self.upper_percentile]))
         if debug:
             print(f'   Percentiles: {p}')
             print('')
+        # Assign positive class 1 to points of high curvature
         for i in range(len(sorted_points)):
             if p[0] < np.abs(sorted_points[i][3]) < p[1]:
                 z = sorted_points[i][0]

@@ -1,3 +1,10 @@
+"""
+File name: SDFDataset.py
+Author: Sebastian Lackner
+Version: 1.0
+Description: Storing of model training data and ground truth labels
+"""
+
 import torch
 
 from torch.utils.data import Dataset
