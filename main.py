@@ -46,11 +46,11 @@ if __name__ == "__main__":
     start_sample_num = 0
     sample_num = 1000
     sample_dimension = 64
-    in_folder = 'in/'
+    in_folder = 'in_v2/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
     in_file_extension = '.ply'
-    out_folder = 'out/'
+    out_folder = 'out_v2/'
     out_file_prefix = 'sample'
     out_file_postfix = ''
     out_file_extension = '.bin'
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     # Compute the ground truth out of one SDF
     if args.compute_one is not None:
-        i_path = (f'{sample_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}'
+        i_path = (f'{in_folder}{sample_file_prefix}{str(args.compute_one).zfill(6)}{sample_file_postfix}'
                   f'{sample_file_extension}')
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     if args.compute_all is not None:
         for i in range(start_sample_num, sample_num):
             print(f'=> Computing sample {i + 1}')
-            i_path = f'{sample_folder}{sample_file_prefix}{str(i).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+            i_path = f'{in_folder}{sample_file_prefix}{str(i).zfill(6)}{sample_file_postfix}{sample_file_extension}'
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
             points = sdf_reader.read_points_from_bin(False, False)
@@ -135,13 +135,13 @@ if __name__ == "__main__":
         sdf_reader = SDFReader(i_path)
         sdf_visualizer = SDFVisualizer(point_size)
         folder = i_path.split('/')[0]
-        if folder == 'in' or folder == 'samples':
+        if folder == 'in' or folder == 'in_v1' or folder == 'in_v2' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
             sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
             sdf_visualizer.plot_points(points, points_of_interest, curvatures)
-        elif folder == 'out' or folder == 'pred':
+        elif folder == 'out' or folder == 'out_v1' or folder == 'out_v2' or folder == 'pred':
             points_of_interest = sdf_reader.read_points_from_bin(True)
             sdf_visualizer.plot_points(points_of_interest, points_of_interest, np.zeros(0))
         else:
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     # Train model on SDF data and ground truth
     if args.train is not None:
-        trainer = SDFTrainer(str(args.train), args.grid_search)
+        trainer = SDFTrainer(str(args.train), args.grid_search, in_folder, out_folder)
         trainer.train()
 
     end_time = time.perf_counter()

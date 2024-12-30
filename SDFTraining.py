@@ -296,7 +296,7 @@ class SDFSegnet(nn.Module):
 class SDFTrainer:
     """Object to handle machine learning training tasks"""
 
-    def __init__(self, model_type, grid_search):
+    def __init__(self, model_type, grid_search, in_folder, out_folder):
         # Check if we have GPU available to run tensors on
         self.device = 'cpu'
         if torch.cuda.is_available():
@@ -316,6 +316,8 @@ class SDFTrainer:
         self.prediction_num = 5
         self.model_type = model_type
         self.grid_search = grid_search
+        self.in_folder = in_folder
+        self.out_folder = out_folder
 
         # Parameters found during grid search (if enabled)
         self.learning_rate = 0.001
@@ -380,7 +382,7 @@ class SDFTrainer:
     def gridsearch(self, grid):
         """Do grid search run yielding best performing hyperparameter combination"""
         # Prepare datasets
-        full_dataset = SDFDataset('samples\\', 'out\\', 1000)
+        full_dataset = SDFDataset(self.in_folder, self.out_folder, 1000)
         if self.train_dataset is None or self.val_dataset is None or self.test_dataset is None:
             split = [0.6, 0.2, 0.2]
             self.train_dataset, self.val_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
@@ -507,7 +509,7 @@ class SDFTrainer:
     def trainonce(self):
         """Do training run yielding test performance and predictions"""
         # Prepare datasets and dataloaders
-        full_dataset = SDFDataset('samples\\', 'out\\', 1000)
+        full_dataset = SDFDataset(self.in_folder, self.out_folder, 1000)
         if self.train_dataset is None or self.test_dataset is None:
             split = [0.8, 0.2]
             self.train_dataset, self.test_dataset = torch.utils.data.random_split(full_dataset, split)
