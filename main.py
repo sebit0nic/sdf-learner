@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     point_size = 5
     tolerance = 0.5
-    lower_percentile = 99.5
+    lower_percentile = 75.0
     upper_percentile = 100.0
     epsilon = 0.1
     start_sample_num = 0
