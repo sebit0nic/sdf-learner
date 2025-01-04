@@ -39,10 +39,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     point_size = 5
-    tolerance = 0.5
-    lower_percentile = 75.0
-    upper_percentile = 100.0
     epsilon = 0.1
+    percentage = 0.1
     start_sample_num = 0
     sample_num = 1000
     sample_dimension = 64
@@ -109,7 +107,7 @@ if __name__ == "__main__":
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
-        sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
+        sdf_curvature = SDFCurvature(epsilon, percentage)
         curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
         points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
         sdf_writer = SDFWriter(o_path)
@@ -123,7 +121,7 @@ if __name__ == "__main__":
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
             points = sdf_reader.read_points_from_bin(False, False)
-            sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
+            sdf_curvature = SDFCurvature(epsilon, percentage)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points, False)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples, False)
             sdf_writer = SDFWriter(o_path)
@@ -137,7 +135,7 @@ if __name__ == "__main__":
         folder = i_path.split('/')[0]
         if folder == 'in' or folder == 'in_v1' or folder == 'in_v2' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
-            sdf_curvature = SDFCurvature(epsilon, tolerance, lower_percentile, upper_percentile)
+            sdf_curvature = SDFCurvature(epsilon, percentage)
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
             points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
             sdf_visualizer.plot_points(points, points_of_interest, curvatures)
