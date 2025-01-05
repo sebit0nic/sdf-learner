@@ -12,8 +12,9 @@ from SDFVisualizer import ProgressBar
 class SDFCurvature:
     """Object used to compute points of high curvature"""
 
-    def __init__(self, epsilon, percentage):
+    def __init__(self, epsilon, threshold, percentage):
         self.epsilon = epsilon
+        self.threshold = threshold
         self.percentage = percentage
 
     def calculate_curvature(self, points, debug=True):
@@ -33,14 +34,7 @@ class SDFCurvature:
                         curvatures[z, y, x] = 0
                         continue
 
-                    # Only points where neighbours have different signs are on the surface
-                    sign = np.sign(points[z, y, x])
-                    if (sign == np.sign(points[z, y, x - 1]) and sign == np.sign(points[z, y, x + 1]) and
-                            sign == np.sign(points[z, y - 1, x]) and sign == np.sign(points[z, y + 1, x]) and
-                            sign == np.sign(points[z - 1, y, x]) and sign == np.sign(points[z + 1, y, x]) and
-                            sign == np.sign(points[z, y + 1, x + 1]) and sign == np.sign(points[z, y - 1, x - 1]) and
-                            sign == np.sign(points[z + 1, y + 1, x]) and sign == np.sign(points[z - 1, y - 1, x]) and
-                            sign == np.sign(points[z + 1, y, x + 1]) and sign == np.sign(points[z - 1, y, x - 1])):
+                    if points[z, y, x] < -self.threshold or points[z, y, x] > self.threshold:
                         sorted_points.append((z, y, x, 0))
                         curvatures[z, y, x] = 0
                         continue
