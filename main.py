@@ -44,11 +44,11 @@ if __name__ == "__main__":
     start_sample_num = 0
     sample_num = 1000
     sample_dimension = 64
-    in_folder = 'in_v2/'
+    in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
     in_file_extension = '.ply'
-    out_folder = 'out_v2/'
+    out_folder = 'out/'
     out_file_prefix = 'sample'
     out_file_postfix = ''
     out_file_extension = '.bin'

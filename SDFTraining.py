@@ -321,7 +321,7 @@ class SDFTrainer:
 
         # Parameters found during grid search (if enabled)
         self.learning_rate = 0.001
-        self.batch_size = 8
+        self.batch_size = 2
         self.loss_function = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([1])).to(self.device)
 
     def init_model(self):

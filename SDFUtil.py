@@ -86,11 +86,13 @@ class SDFCurvature:
                     f_dyz = ((yz_pos_i - y_pos_i - z_pos_i + 2.0 * cur_point - y_neg_i - z_neg_i +
                               yz_neg_i) / 2.0 * (self.epsilon ** 2))
 
+                    # Compute expanded hessian and norm of gradient
                     ext_hessian = np.array([[f_dx2, f_dxy, f_dxz, f_dx], [f_dxy, f_dy2, f_dyz, f_dy],
                                             [f_dxz, f_dyz, f_dz2, f_dz], [f_dx, f_dy, f_dz, 0.0]])
+                    gradient = f_dx ** 2 + f_dy ** 2 + f_dz ** 2
 
                     # Curvature computation
-                    curvature = - np.linalg.det(ext_hessian) / ((f_dx ** 2 + f_dy ** 2 + f_dz ** 2) ** 2)
+                    curvature = - np.linalg.det(ext_hessian) / (gradient ** 2)
 
                     sorted_points.append((z, y, x, curvature))
                     curvatures[z, y, x] = curvature
