@@ -41,7 +41,7 @@ class SDFVisualizer:
     def __init__(self, point_size):
         self.point_size = point_size
 
-    def plot_points(self, points, points_of_interest, curvatures):
+    def plot_points(self, points_of_interest, curvatures, i_obj_file):
         """Plot point cloud out of SDF, prediction, or ground truth data"""
         arr_curv_pos = []
         arr_curv_neg = []
@@ -56,16 +56,19 @@ class SDFVisualizer:
                     # Plot convex/concave points in different colors (only available for SDFs)
                     if points_of_interest[z, y, x]:
                         if size_c == 0:
-                            arr_curv_neg.append((float(x), float(y), float(z)))
+                            arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
                         elif curvatures[z, y, x] > 0:
-                            arr_curv_pos.append((float(x), float(y), float(z)))
+                            arr_curv_pos.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
                         else:
-                            arr_curv_neg.append((float(x), float(y), float(z)))
+                            arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
             print('\r   Progress: ' + (int((z / (size_p - 1)) * 100) * '#') + (100 - int((z / (size_p - 1)) * 100)) *
                   '.', end='', flush=True)
         print('')
         plotter = pyvista.Plotter()
-        plotter.add_mesh(pyvista.Box(bounds=(0.0, size_p, 0.0, size_p, 0.0, size_p)), color='red', opacity=0.01)
+        try:
+            plotter.import_obj(i_obj_file)
+        except FileNotFoundError:
+            print('Obj not found for sample !')
         if len(arr_curv_in) != 0:
             pc_curv = np.array(arr_curv_in)
             plotter.add_mesh(pc_curv, color='g', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
@@ -76,7 +79,6 @@ class SDFVisualizer:
             pc_curv = np.array(arr_curv_neg)
             plotter.add_mesh(pc_curv, color='b', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
         plotter.show_axes()
-        plotter.show_grid()
         plotter.show()
 
     def plot_tensor(self, tensor, size):
