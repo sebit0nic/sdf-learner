@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     point_size = 6
     epsilon = 0.1
-    percentage = 0.1
+    percentage = 0.15
     threshold = 0.5
     start_sample_num = 0
     sample_num = 1000

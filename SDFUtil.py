@@ -17,6 +17,25 @@ class SDFCurvature:
         self.threshold = threshold
         self.percentage = percentage
 
+    def hessian(self, x):
+        """
+        Calculate the hessian matrix with finite differences
+        Parameters:
+           - x : ndarray
+        Returns:
+           an array of shape (x.dim, x.ndim) + x.shape
+           where the array[i, j, ...] corresponds to the second derivative x_ij
+        """
+        # Reference: https://stackoverflow.com/a/31207520
+        x_grad = np.gradient(x, self.epsilon)
+        hessian = np.empty((x.ndim, x.ndim) + x.shape, dtype=x.dtype)
+        for k, grad_k in enumerate(x_grad):
+            # iterate over dimensions, apply gradient again to every component of the first derivative
+            tmp_grad = np.gradient(grad_k, self.epsilon)
+            for l, grad_kl in enumerate(tmp_grad):
+                hessian[k, l, :, :] = grad_kl
+        return hessian
+
     def calculate_curvature(self, points, debug=True):
         """Compute gaussian curvature for each point in given array"""
         if debug:
@@ -24,69 +43,29 @@ class SDFCurvature:
         sorted_points = []
         size = np.shape(points)[0]
         curvatures = np.zeros((size, size, size), dtype=np.float32)
+        gradients = np.gradient(points)
+        hessians = self.hessian(points)
         ProgressBar.init_progress_bar(debug)
         for z in range(size):
             for y in range(size):
                 for x in range(size):
-                    # Disregard points on the borders
-                    if x - 1 < 0 or x + 1 >= size or y - 1 < 0 or y + 1 >= size or z - 1 < 0 or z + 1 >= size:
-                        sorted_points.append((z, y, x, 0))
-                        curvatures[z, y, x] = 0
-                        continue
-
+                    # Disregard points that are not near the surface
                     if points[z, y, x] < -self.threshold or points[z, y, x] > self.threshold:
                         sorted_points.append((z, y, x, 0))
                         curvatures[z, y, x] = 0
                         continue
 
-                    # Interpolate x
-                    cur_point = points[z, y, x]
-                    x_neg_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z, y, x - 1]
-                    x_pos_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z, y, x + 1]
-                    x_out_1 = (1.0 - self.epsilon) * points[z, y + 1, x] + self.epsilon * points[z, y + 1, x + 1]
-                    x_out_2 = (1.0 - self.epsilon) * points[z, y - 1, x] + self.epsilon * points[z, y - 1, x - 1]
-
-                    # Interpolate y
-                    y_neg_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z, y - 1, x]
-                    y_pos_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z, y + 1, x]
-                    y_out_1 = (1.0 - self.epsilon) * points[z + 1, y, x] + self.epsilon * points[z + 1, y + 1, x]
-                    y_out_2 = (1.0 - self.epsilon) * points[z - 1, y, x] + self.epsilon * points[z - 1, y - 1, x]
-
-                    # Interpolate z
-                    z_neg_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z - 1, y, x]
-                    z_pos_i = (1.0 - self.epsilon) * cur_point + self.epsilon * points[z + 1, y, x]
-                    z_out_1 = (1.0 - self.epsilon) * points[z, y, x + 1] + self.epsilon * points[z + 1, y, x + 1]
-                    z_out_2 = (1.0 - self.epsilon) * points[z, y, x - 1] + self.epsilon * points[z - 1, y, x - 1]
-
-                    # Bilinear interpolate for mixed coordinates
-                    xy_pos_i = (1.0 - self.epsilon) * x_pos_i + self.epsilon * x_out_1
-                    xy_neg_i = (1.0 - self.epsilon) * x_neg_i + self.epsilon * x_out_2
-                    yz_pos_i = (1.0 - self.epsilon) * y_pos_i + self.epsilon * y_out_1
-                    yz_neg_i = (1.0 - self.epsilon) * y_neg_i + self.epsilon * y_out_2
-                    xz_pos_i = (1.0 - self.epsilon) * z_pos_i + self.epsilon * z_out_1
-                    xz_neg_i = (1.0 - self.epsilon) * z_neg_i + self.epsilon * z_out_2
-
-                    # Second order derivatives
-                    f_dx = (x_pos_i - x_neg_i) / (2.0 * self.epsilon)
-                    f_dy = (y_pos_i - y_neg_i) / (2.0 * self.epsilon)
-                    f_dz = (z_pos_i - z_neg_i) / (2.0 * self.epsilon)
-                    f_dx2 = (x_pos_i - (2.0 * cur_point) + x_neg_i) / (self.epsilon ** 2)
-                    f_dy2 = (y_pos_i - (2.0 * cur_point) + y_neg_i) / (self.epsilon ** 2)
-                    f_dz2 = (z_pos_i - (2.0 * cur_point) + z_neg_i) / (self.epsilon ** 2)
-                    f_dxy = ((xy_pos_i - x_pos_i - y_pos_i + 2.0 * cur_point - x_neg_i - y_neg_i +
-                              xy_neg_i) / 2.0 * (self.epsilon ** 2))
-                    f_dxz = ((xz_pos_i - x_pos_i - z_pos_i + 2.0 * cur_point - x_neg_i - z_neg_i +
-                              xz_neg_i) / 2.0 * (self.epsilon ** 2))
-                    f_dyz = ((yz_pos_i - y_pos_i - z_pos_i + 2.0 * cur_point - y_neg_i - z_neg_i +
-                              yz_neg_i) / 2.0 * (self.epsilon ** 2))
-
                     # Compute expanded hessian and norm of gradient
-                    ext_hessian = np.array([[f_dx2, f_dxy, f_dxz, f_dx], [f_dxy, f_dy2, f_dyz, f_dy],
-                                            [f_dxz, f_dyz, f_dz2, f_dz], [f_dx, f_dy, f_dz, 0.0]])
-                    gradient = f_dx ** 2 + f_dy ** 2 + f_dz ** 2
+                    gradient = np.array([gradients[0][z, y, x], gradients[1][z, y, x], gradients[2][z, y, x]])
+                    hessian = hessians[:, :, z, y, x]
+                    ext_hessian = np.array([[hessian[0, 0], hessian[0, 1], hessian[0, 2], gradient[0]],
+                                            [hessian[1, 0], hessian[1, 1], hessian[1, 2], gradient[1]],
+                                            [hessian[2, 0], hessian[2, 1], hessian[2, 2], gradient[2]],
+                                            [gradient[0], gradient[1], gradient[2], 0.0]])
+                    gradient_norm = gradient[0] ** 2 + gradient[1] ** 2 + gradient[2] ** 2
 
                     # Curvature computation
-                    curvature = - np.linalg.det(ext_hessian) / (gradient ** 2)
+                    curvature = - np.linalg.det(ext_hessian) / (gradient_norm ** 2)
 
                     sorted_points.append((z, y, x, curvature))
                     curvatures[z, y, x] = curvature
