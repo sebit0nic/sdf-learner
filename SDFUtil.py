@@ -73,6 +73,34 @@ class SDFCurvature:
         ProgressBar.end_progress_bar(debug)
         return curvatures, sorted_points
 
+    def calculate_curvature_new(self, sdf, debug=True):
+        """Compute gaussian curvature for each point in given array"""
+        if debug:
+            print('=> Computing numerical derivative and curvature of points...')
+        sorted_points = []
+        size = sdf.dimensions[0]
+        curvatures = np.zeros((size, size, size), dtype=np.float32)
+        ProgressBar.init_progress_bar(debug)
+        for z in range(size):
+            for y in range(size):
+                for x in range(size):
+                    # Disregard points that are not on the surface
+                    if not sdf.on_surface(np.array((z, y, x)))[0]:
+                        continue
+
+                    # Curvature computation
+                    curvature = sdf.curvature(np.array((z, y, x)), self.epsilon)
+                    res = np.linalg.det(curvature)
+                    # TODO: try formula from above with hessian calculation from Berkeley?
+                    # TODO: extract eigenvalues?
+                    # TODO: look at magnitude (operator norm) of matrix?
+
+                    sorted_points.append((z, y, x, res))
+                    curvatures[z, y, x] = res
+            ProgressBar.update_progress_bar(debug, z / (size - 1))
+        ProgressBar.end_progress_bar(debug)
+        return curvatures, sorted_points
+
     def classify_points(self, points, sorted_points, debug=True):
         """Assign class to each point based on sorted curvature, meaning to find points of high curvature"""
         if debug:

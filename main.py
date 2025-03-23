@@ -17,6 +17,7 @@ from SDFFileHandler import SDFWriter
 from SDFUtil import SDFCurvature
 from SDFVisualizer import SDFVisualizer
 from SDFTraining import SDFTrainer
+from sdf import Sdf3D
 
 
 if __name__ == "__main__":
@@ -40,8 +41,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     point_size = 6
-    epsilon = 0.1
-    percentage = 0.15
+    epsilon = 0.001
+    percentage = 20
     threshold = 0.5
     start_sample_num = 0
     sample_num = 1000
@@ -110,7 +111,9 @@ if __name__ == "__main__":
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
         sdf_curvature = SDFCurvature(epsilon, threshold, percentage)
-        curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
+        sdf = Sdf3D(points, np.array((16, 16, 16)), 1)
+        # curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
+        curvatures, sorted_samples = sdf_curvature.calculate_curvature_new(sdf)
         points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
         sdf_writer = SDFWriter(o_path)
         sdf_writer.write_points(points_of_interest)
