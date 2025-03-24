@@ -89,11 +89,37 @@ class SDFCurvature:
                         continue
 
                     # Curvature computation
+                    gradient = sdf.gradient(np.array((z, y, x)))
                     curvature = sdf.curvature(np.array((z, y, x)), self.epsilon)
-                    res = np.linalg.det(curvature)
-                    # TODO: try formula from above with hessian calculation from Berkeley?
-                    # TODO: extract eigenvalues?
-                    # TODO: look at magnitude (operator norm) of matrix?
+
+                    # Option 1.1: determinant of cut 2x2 matrix
+                    # hessian = curvature[0:2, 0:2]
+                    # res = np.linalg.det(hessian)
+
+                    # Option 1.2: eigenvalues of cut 2x2 matrix
+                    # hessian = curvature[0:2, 0:2]
+                    # eigen = np.linalg.eigvals(hessian)
+                    # res = eigen[0] * eigen[1]
+
+                    # Option 1.3: determinant of cut 2x2 matrix slightly changed
+                    # hessian = curvature[0:2, 0:2]
+                    # res = np.linalg.det(hessian) / (1 + gradient[0] ** 2 + gradient[1] ** 2) ** 2
+
+                    # Option 2: eigenvalues of 3x3 matrix as curvature
+                    eigen = np.linalg.eigvals(curvature)
+                    res = eigen[0] * eigen[1]
+
+                    # Option 3: eigenvalues of 3x3 matrix as mean curvature
+                    # eigen = np.linalg.eigvals(curvature)
+                    # res = (eigen[0] + eigen[1]) / 2
+
+                    # Option 4: formula from above
+                    # ext_hessian = np.array([[curvature[0, 0], curvature[0, 1], curvature[0, 2], gradient[0]],
+                    #                         [curvature[1, 0], curvature[1, 1], curvature[1, 2], gradient[1]],
+                    #                         [curvature[2, 0], curvature[2, 1], curvature[2, 2], gradient[2]],
+                    #                         [gradient[0], gradient[1], gradient[2], 0.0]])
+                    # gradient_norm = np.linalg.norm(gradient, 1)
+                    # res = - np.linalg.det(ext_hessian) / (gradient_norm ** 4)
 
                     sorted_points.append((z, y, x, res))
                     curvatures[z, y, x] = res

@@ -43,6 +43,7 @@ if __name__ == "__main__":
     point_size = 6
     epsilon = 0.001
     percentage = 20
+    resolution = 0.75
     threshold = 0.5
     start_sample_num = 0
     sample_num = 1000
@@ -111,7 +112,7 @@ if __name__ == "__main__":
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
         sdf_curvature = SDFCurvature(epsilon, threshold, percentage)
-        sdf = Sdf3D(points, np.array((16, 16, 16)), 1)
+        sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
         # curvatures, sorted_samples = sdf_curvature.calculate_curvature(points)
         curvatures, sorted_samples = sdf_curvature.calculate_curvature_new(sdf)
         points_of_interest = sdf_curvature.classify_points(curvatures, sorted_samples)
