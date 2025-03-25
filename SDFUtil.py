@@ -89,7 +89,7 @@ class SDFCurvature:
                         continue
 
                     # Curvature computation
-                    gradient = sdf.gradient(np.array((z, y, x)))
+                    # gradient = sdf.gradient(np.array((z, y, x)))
                     curvature = sdf.curvature(np.array((z, y, x)), self.epsilon)
 
                     # Option 1.1: determinant of cut 2x2 matrix
@@ -105,15 +105,18 @@ class SDFCurvature:
                     # hessian = curvature[0:2, 0:2]
                     # res = np.linalg.det(hessian) / (1 + gradient[0] ** 2 + gradient[1] ** 2) ** 2
 
-                    # Option 2: eigenvalues of 3x3 matrix as curvature
+                    # Option 2.1: eigenvalues of 3x3 matrix as curvature
                     eigen = np.linalg.eigvals(curvature)
-                    res = eigen[0] * eigen[1]
+                    res = eigen[0] * eigen[1] * eigen[2]
 
-                    # Option 3: eigenvalues of 3x3 matrix as mean curvature
+                    # Option 2.2: determinant of 3x3 matrix
+                    # res = np.linalg.det(curvature)
+
+                    # Option 2.3: eigenvalues of 3x3 matrix as mean curvature
                     # eigen = np.linalg.eigvals(curvature)
                     # res = (eigen[0] + eigen[1]) / 2
 
-                    # Option 4: formula from above
+                    # Option 3: formula from above
                     # ext_hessian = np.array([[curvature[0, 0], curvature[0, 1], curvature[0, 2], gradient[0]],
                     #                         [curvature[1, 0], curvature[1, 1], curvature[1, 2], gradient[1]],
                     #                         [curvature[2, 0], curvature[2, 1], curvature[2, 2], gradient[2]],
@@ -121,8 +124,14 @@ class SDFCurvature:
                     # gradient_norm = np.linalg.norm(gradient, 1)
                     # res = - np.linalg.det(ext_hessian) / (gradient_norm ** 4)
 
-                    sorted_points.append((z, y, x, res))
-                    curvatures[z, y, x] = res
+                    # Option 4: formula from iso-surface
+                    # A = np.matrix(curvature)
+                    # adj_hessian = A.getH()
+                    # res = (gradient.reshape((1, 3)).dot(adj_hessian.dot(gradient.reshape(3, 1)))) /
+                    #        np.linalg.norm(gradient, 2) ** 4
+
+                    sorted_points.append((z, y, x, abs(res)))
+                    curvatures[z, y, x] = abs(res)
             ProgressBar.update_progress_bar(debug, z / (size - 1))
         ProgressBar.end_progress_bar(debug)
         return curvatures, sorted_points
@@ -131,12 +140,17 @@ class SDFCurvature:
         """Assign class to each point based on sorted curvature, meaning to find points of high curvature"""
         if debug:
             print('=> Sorting curvature of points...')
-        sorted_points.sort(key=lambda elem: abs(elem[3]), reverse=True)
+        sorted_points.sort(key=lambda elem: elem[3], reverse=False)
         size = np.shape(points)[0]
         points_of_interest = np.zeros((size, size, size), dtype=np.int32)
+        percentile = np.percentile(sorted_points, self.percentage)
+        print(percentile)
 
         # Assign positive class 1 to points of high curvature up to certain percentage
-        for i in range(0, int(len(sorted_points) * (self.percentage / 100.0))):
+        # for i in range(0, int(len(sorted_points) * (self.percentage / 100.0))):
+        for i in range(len(sorted_points)):
+            if sorted_points[i][3] < percentile:
+                continue
             z = sorted_points[i][0]
             y = sorted_points[i][1]
             x = sorted_points[i][2]

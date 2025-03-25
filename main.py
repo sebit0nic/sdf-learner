@@ -41,8 +41,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     point_size = 6
-    epsilon = 0.001
-    percentage = 20
+    epsilon = 0.01
+    percentage = 95
     resolution = 0.75
     threshold = 0.5
     start_sample_num = 0
