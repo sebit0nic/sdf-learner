@@ -22,6 +22,9 @@ class SDFCurvature:
         if debug:
             print('=> Computing numerical derivative and curvature of points...')
         sorted_points = []
+        curvatures = np.zeros((self.size, self.size, self.size), dtype=np.float32)
+        neg_curvatures = []
+        pos_curvatures = []
         ProgressBar.init_progress_bar(debug)
         for z in range(self.size):
             for y in range(self.size):
@@ -39,9 +42,16 @@ class SDFCurvature:
                     res = np.linalg.det(weingarten_map)
 
                     sorted_points.append((z, y, x, abs(res)))
+                    curvatures[z, y, x] = res
+                    if res >= 0:
+                        pos_curvatures.append(res)
+                    else:
+                        neg_curvatures.append(res)
             ProgressBar.update_progress_bar(debug, z / (self.size - 1))
         ProgressBar.end_progress_bar(debug)
-        return sorted_points
+        print(f'   Min pos: {min(pos_curvatures)}, max pos: {max(pos_curvatures)}')
+        print(f'   Min neg: {min(neg_curvatures)}, max neg: {max(neg_curvatures)}')
+        return curvatures, sorted_points
 
     def classify_points(self, sorted_points, debug=True):
         """Assign class to each point based on sorted curvature, meaning to find points of high curvature"""

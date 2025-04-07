@@ -41,18 +41,26 @@ class SDFVisualizer:
     def __init__(self, point_size):
         self.point_size = point_size
 
-    def plot_points(self, points_of_interest, i_obj_file):
+    def plot_points(self, points_of_interest, curvatures, i_obj_file):
         """Plot point cloud out of SDF, prediction, or ground truth data"""
-        arr_curv = []
+        arr_curv_pos = []
+        arr_curv_neg = []
+        arr_curv_in = []
         size_p = np.shape(points_of_interest)[0]
+        size_c = np.shape(curvatures)[0]
         print('=> Visualizing points using pyvista...')
         print('   Progress: ' + 100 * '.', end='')
         for z in range(size_p):
             for y in range(size_p):
                 for x in range(size_p):
-                    # Add point with high curvature to blue points being plotted
+                    # Plot convex/concave points in different colors (only available for SDFs)
                     if points_of_interest[z, y, x]:
-                        arr_curv.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
+                        if size_c == 0:
+                            arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
+                        elif curvatures[z, y, x] > 0:
+                            arr_curv_pos.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
+                        else:
+                            arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
             print('\r   Progress: ' + (int((z / (size_p - 1)) * 100) * '#') + (100 - int((z / (size_p - 1)) * 100)) *
                   '.', end='', flush=True)
         print('')
@@ -63,8 +71,14 @@ class SDFVisualizer:
             plotter.import_obj(i_obj_file)
         except FileNotFoundError:
             print('Obj not found for sample !')
-        if len(arr_curv) != 0:
-            pc_curv = np.array(arr_curv)
+        if len(arr_curv_in) != 0:
+            pc_curv = np.array(arr_curv_in)
+            plotter.add_mesh(pc_curv, color='g', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
+        if len(arr_curv_pos) != 0:
+            pc_curv = np.array(arr_curv_pos)
+            plotter.add_mesh(pc_curv, color='y', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
+        if len(arr_curv_neg) != 0:
+            pc_curv = np.array(arr_curv_neg)
             plotter.add_mesh(pc_curv, color='b', point_size=self.point_size, render_points_as_spheres=True, opacity=1)
         plotter.show_axes()
         plotter.show()

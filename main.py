@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    point_size = 6
+    point_size = 10
     epsilon = 0.001
     percentage = 20
     resolution = 0.5
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         points = sdf_reader.read_points_from_bin(False)
         sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
         sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
-        sorted_samples = sdf_curvature.calculate_curvature(sdf)
+        _, sorted_samples = sdf_curvature.calculate_curvature(sdf)
         points_of_interest = sdf_curvature.classify_points(sorted_samples)
         sdf_writer = SDFWriter(o_path)
         sdf_writer.write_points(points_of_interest)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
             points = sdf_reader.read_points_from_bin(False, False)
             sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
-            sorted_samples = sdf_curvature.calculate_curvature(sdf, False)
+            _, sorted_samples = sdf_curvature.calculate_curvature(sdf, False)
             points_of_interest = sdf_curvature.classify_points(sorted_samples, False)
             sdf_writer = SDFWriter(o_path)
             sdf_writer.write_points(points_of_interest, False)
@@ -147,12 +147,12 @@ if __name__ == "__main__":
             points = sdf_reader.read_points_from_bin(False)
             sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
-            sorted_samples = sdf_curvature.calculate_curvature(sdf)
+            curvatures, sorted_samples = sdf_curvature.calculate_curvature(sdf)
             points_of_interest = sdf_curvature.classify_points(sorted_samples)
-            sdf_visualizer.plot_points(points_of_interest, i_obj_path)
+            sdf_visualizer.plot_points(points_of_interest, curvatures, i_obj_path)
         elif folder == 'out' or folder == 'out_v1' or folder == 'out_v2' or folder == 'pred':
             points_of_interest = sdf_reader.read_points_from_bin(True)
-            sdf_visualizer.plot_points(points_of_interest, i_obj_path)
+            sdf_visualizer.plot_points(points_of_interest, np.zeros(0), i_obj_path)
         else:
             print(f'Invalid folder \'{folder}\' found.')
 
