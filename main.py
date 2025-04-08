@@ -47,7 +47,7 @@ if __name__ == "__main__":
     threshold = 0.5
     start_sample_num = 0
     sample_num = 1000
-    sample_dimension = 64
+    sample_dim = 64
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     out_file_prefix = 'sample'
     out_file_postfix = ''
     out_file_extension = '.bin'
-    sample_folder = 'samples/'
+    sample_folder = 'in/'
     sample_file_prefix = 'sample'
     sample_file_postfix = '_subdiv'
     sample_file_extension = '.bin'
@@ -78,9 +78,9 @@ if __name__ == "__main__":
         o_path = (f'{sample_folder}{sample_file_prefix}{str(args.generate_one).zfill(6)}{sample_file_postfix}'
                   f'{sample_file_extension}')
         mesh = trimesh.load(i_path)
-        x = np.linspace(0, sample_dimension - 1, sample_dimension)
-        y = np.linspace(0, sample_dimension - 1, sample_dimension)
-        z = np.linspace(0, sample_dimension - 1, sample_dimension)
+        x = np.linspace(0, sample_dim - 1, sample_dim)
+        y = np.linspace(0, sample_dim - 1, sample_dim)
+        z = np.linspace(0, sample_dim - 1, sample_dim)
         points = np.array(list(itertools.product(x, y, z)))
         print('=> Generating sample out of mesh...')
         sdf = mesh_to_sdf.mesh_to_sdf(mesh, points, surface_point_method='scan', sign_method='depth')
@@ -90,9 +90,9 @@ if __name__ == "__main__":
 
     # Do conversion of multiple triangle meshes to SDFs (experimental)
     if args.generate_all is not None:
-        x = np.linspace(0, sample_dimension - 1, sample_dimension)
-        y = np.linspace(0, sample_dimension - 1, sample_dimension)
-        z = np.linspace(0, sample_dimension - 1, sample_dimension)
+        x = np.linspace(0, sample_dim - 1, sample_dim)
+        y = np.linspace(0, sample_dim - 1, sample_dim)
+        z = np.linspace(0, sample_dim - 1, sample_dim)
         points = np.array(list(itertools.product(x, y, z)))
         for i in range(start_sample_num, sample_num):
             print(f'=> Generating sample {i + 1}')
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
-        sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
+        sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
         sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
         _, sorted_samples = sdf_curvature.calculate_curvature(sdf)
         points_of_interest = sdf_curvature.classify_points(sorted_samples)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
             points = sdf_reader.read_points_from_bin(False, False)
-            sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
+            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
             _, sorted_samples = sdf_curvature.calculate_curvature(sdf, False)
             points_of_interest = sdf_curvature.classify_points(sorted_samples, False)
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         folder = i_path.split('/')[0]
         if folder == 'in' or folder == 'in_v1' or folder == 'in_v2' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
-            sdf = Sdf3D(points, np.array((16, 16, 16)), resolution)
+            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(sdf)
             points_of_interest = sdf_curvature.classify_points(sorted_samples)
