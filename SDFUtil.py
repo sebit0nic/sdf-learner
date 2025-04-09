@@ -60,7 +60,13 @@ class SDFCurvature:
         sorted_points.sort(key=lambda elem: elem[3], reverse=True)
         points_of_interest = np.zeros((self.size, self.size, self.size), dtype=np.int32)
 
+        # curv_list = [abs(elem[3]) for elem in sorted_points]
+        # s = np.array(curv_list)
+        # p = np.percentile(s, np.array([90, 100]))
+
         # Assign positive class 1 to points of high curvature up to certain percentage
+        # for i in range(len(sorted_points)):
+        #     if p[0] <= np.abs(sorted_points[i][3]) <= p[1]:
         for i in range(0, int(len(sorted_points) * (self.percentage / 100.0))):
             z = sorted_points[i][0]
             y = sorted_points[i][1]
