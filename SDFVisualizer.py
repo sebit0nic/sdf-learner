@@ -57,7 +57,7 @@ class SDFVisualizer:
                     if points_of_interest[z, y, x]:
                         if size_c == 0:
                             arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
-                        elif curvatures[z, y, x] > 0:
+                        elif curvatures[z, y, x] >= 0:
                             arr_curv_pos.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
                         else:
                             arr_curv_neg.append((float(z + 0.5), float(y + 0.5), float(x + 0.5)))
