@@ -7,6 +7,7 @@ Author: Sahaana Suri, Jeff Mahler, and Matt Matl
 from abc import ABCMeta, abstractmethod
 import logging
 import numpy as np
+import math
 from numbers import Number
 
 import time
@@ -206,7 +207,64 @@ class Sdf:
             are in axis order and specify the gradients for that axis
             at each point.
         """
-        self.gradients_ = np.gradient(self.data_)
+        self.gradients_ = self.comp_gradients(self.data_)
+
+    def interpolate(self, x, y, z, sdf):
+        # trilinear interpolation
+        dx = x - math.floor(x)
+        dy = y - math.floor(y)
+        dz = z - math.floor(z)
+
+        x_ = math.floor(x)
+        y_ = math.floor(y)
+        z_ = math.floor(z)
+
+        dxyz = sdf[z_, y_, x_]
+        dx1yz = sdf[z_, y_, x_ + 1]
+        dxy1z = sdf[z_, y_ + 1, x_]
+        dx1y1z = sdf[z_, y_ + 1, x_ + 1]
+        dxyz1 = sdf[z_ + 1, y_, x_]
+        dx1yz1 = sdf[z_ + 1, y_, x_ + 1]
+        dxy1z1 = sdf[z_ + 1, y_ + 1, x_]
+        dx1y1z1 = sdf[z_ + 1, y_ + 1, x_ + 1]
+        dyz = dxyz * (1 - dx) + dx1yz * dx
+        dy1z = dxy1z * (1 - dx) + dx1y1z * dx
+        dyz1 = dxyz1 * (1 - dx) + dx1yz1 * dx
+        dy1z1 = dxy1z1 * (1 - dx) + dx1y1z1 * dx
+        dzz = dyz * (1 - dy) + dy1z * dy
+        dz1 = dyz1 * (1 - dy) + dy1z1 * dy
+
+        return dzz * (1 - dz) + dz1 * dz
+
+    def comp_gradients(self, sdf):
+        gradient = np.zeros((3, sdf.shape[0], sdf.shape[1], sdf.shape[2]))
+        size = sdf.shape[0]
+        for z in range(size - 1):
+            for y in range(size - 1):
+                for x in range(size - 1):
+                    # calc gradient
+                    if x > 0:
+                        gradient[0, z, y, x] = (self.interpolate(x + self.epsilon, y, z, sdf) -
+                                                self.interpolate(x - self.epsilon, y, z, sdf)) / (2 * self.epsilon)
+                    else:
+                        gradient[0, z, y, x] = (self.interpolate(x + self.epsilon, y, z, sdf) -
+                                                self.interpolate(x, y, z, sdf)) / self.epsilon
+
+                    if y < 0:
+                        gradient[1, z, y, x] = (self.interpolate(x, y + self.epsilon, z, sdf) -
+                                                self.interpolate(x, y - self.epsilon, z, sdf)) / (2 * self.epsilon)
+                    else:
+                        gradient[1, z, y, x] = (self.interpolate(x, y + self.epsilon, z, sdf) -
+                                                self.interpolate(x, y, z, sdf)) / self.epsilon
+
+                    if z > 0:
+                        gradient[2, z, y, x] = (self.interpolate(x, y, z + self.epsilon, sdf) -
+                                                self.interpolate(x, y, z - self.epsilon, sdf)) / (2 * self.epsilon)
+                    else:
+                        gradient[2, z, y, x] = (self.interpolate(x, y, z + self.epsilon, sdf) -
+                                                self.interpolate(x, y, z, sdf)) / self.epsilon
+
+        return gradient
 
 
 class Sdf3D(Sdf):
@@ -219,12 +277,13 @@ class Sdf3D(Sdf):
     min_coords_z = [0, 1, 2, 4]
     max_coords_z = [3, 5, 6, 7]
 
-    def __init__(self, sdf_data, origin, resolution, use_abs=True, T_sdf_world=RigidTransform(from_frame='sdf',
-                                                                                              to_frame='world')):
+    def __init__(self, sdf_data, origin, resolution, epsilon=0.01, use_abs=True,
+                 T_sdf_world=RigidTransform(from_frame='sdf', to_frame='world')):
         self.data_ = sdf_data
         self.origin_ = origin
         self.resolution_ = resolution
         self.dims_ = self.data_.shape
+        self.epsilon = epsilon
 
         # set up surface params
         # resolution is max dist from surface when surf is orthogonal to diagonal grid cells
@@ -413,7 +472,7 @@ class Sdf3D(Sdf):
 
         return g
 
-    def curvature(self, coords, delta=0.001):
+    def curvature(self, coords):
         """
         Returns an approximation to the local SDF curvature (Hessian) at the
         given coordinate in grid basis.
@@ -422,19 +481,18 @@ class Sdf3D(Sdf):
         ---------
         coords : numpy 3-vector
             the grid coordinates at which to get the curvature
-        delta : ___
 
         Returns
         -------
         curvature : 3x3 ndarray of the curvature at the surface points
         """
         # perturb local coords
-        coords_x_up = coords + np.array([delta, 0, 0])
-        coords_x_down = coords + np.array([-delta, 0, 0])
-        coords_y_up = coords + np.array([0, delta, 0])
-        coords_y_down = coords + np.array([0, -delta, 0])
-        coords_z_up = coords + np.array([0, 0, delta])
-        coords_z_down = coords + np.array([0, 0, -delta])
+        coords_x_up = coords + np.array([self.epsilon, 0, 0])
+        coords_x_down = coords + np.array([-self.epsilon, 0, 0])
+        coords_y_up = coords + np.array([0, self.epsilon, 0])
+        coords_y_down = coords + np.array([0, -self.epsilon, 0])
+        coords_z_up = coords + np.array([0, 0, self.epsilon])
+        coords_z_down = coords + np.array([0, 0, -self.epsilon])
 
         # get gradient
         grad_x_up = self.gradient(coords_x_up)
@@ -445,9 +503,9 @@ class Sdf3D(Sdf):
         grad_z_down = self.gradient(coords_z_down)
 
         # finite differences
-        curvature_x = (grad_x_up - grad_x_down) / (4 * delta)
-        curvature_y = (grad_y_up - grad_y_down) / (4 * delta)
-        curvature_z = (grad_z_up - grad_z_down) / (4 * delta)
+        curvature_x = (grad_x_up - grad_x_down) / (4 * self.epsilon)
+        curvature_y = (grad_y_up - grad_y_down) / (4 * self.epsilon)
+        curvature_z = (grad_z_up - grad_z_down) / (4 * self.epsilon)
         curvature = np.c_[curvature_x, np.c_[curvature_y, curvature_z]]
         curvature = curvature + curvature.T
         return curvature

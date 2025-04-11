@@ -35,7 +35,7 @@ class SDFCurvature:
 
                     # Compute the normal and hessian at the current point
                     normal = sdf.surface_normal(np.array((z, y, x)))
-                    hessian = sdf.curvature(np.array((z, y, x)), self.epsilon)
+                    hessian = sdf.curvature(np.array((z, y, x)))
 
                     # Compute the shape operator, also called the weingarten map
                     weingarten_map = -hessian * normal

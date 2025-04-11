@@ -41,7 +41,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     point_size = 10
-    epsilon = 0.001
+    epsilon = 0.01
     percentage = 20
     resolution = 0.5
     threshold = 0.5
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         o_path = f'{out_folder}{out_file_prefix}{str(args.compute_one).zfill(6)}{out_file_postfix}{out_file_extension}'
         sdf_reader = SDFReader(i_path)
         points = sdf_reader.read_points_from_bin(False)
-        sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
+        sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution, epsilon)
         sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
         _, sorted_samples = sdf_curvature.calculate_curvature(sdf)
         points_of_interest = sdf_curvature.classify_points(sorted_samples)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
             sdf_reader = SDFReader(i_path)
             points = sdf_reader.read_points_from_bin(False, False)
-            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
+            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution, epsilon)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
             _, sorted_samples = sdf_curvature.calculate_curvature(sdf, False)
             points_of_interest = sdf_curvature.classify_points(sorted_samples, False)
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         folder = i_path.split('/')[0]
         if folder == 'in' or folder == 'in_v1' or folder == 'in_v2' or folder == 'samples':
             points = sdf_reader.read_points_from_bin(False)
-            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution)
+            sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution, epsilon)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(sdf)
             points_of_interest = sdf_curvature.classify_points(sorted_samples)
