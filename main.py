@@ -44,7 +44,6 @@ if __name__ == "__main__":
     epsilon = 0.01
     percentage = 20
     resolution = 0.5
-    threshold = 0.5
     start_sample_num = 0
     sample_num = 1000
     sample_dim = 64

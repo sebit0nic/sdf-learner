@@ -14,7 +14,7 @@ import time
 
 from autolab_core import RigidTransform, SimilarityTransform, PointCloud, Point, NormalCloud
 
-from sys import version_info
+# from sys import version_info
 
 # if version_info[0] != 3:
 #     range = xrange
@@ -152,7 +152,7 @@ class Sdf:
     # Universal SDF Methods
     ##################################################################
     def transform_to_world(self):
-        """Returns an sdf object with center in the world frame of reference.
+        """Returns a sdf object with center in the world frame of reference.
         """
         return self.transform(self.pose_, scale=self.scale_)
 
@@ -162,7 +162,7 @@ class Sdf:
         return self.transform_pt_grid_to_obj(self.center_)
 
     def on_surface(self, coords):
-        """Determines whether or not a point is on the object surface.
+        """Determines whether a point is on the object surface.
 
         Parameters
         ----------
@@ -182,7 +182,7 @@ class Sdf:
         return False, sdf_val
 
     def is_out_of_bounds(self, coords):
-        """Returns True if coords is an out of bounds access.
+        """Returns True if coords is an out-of-bounds access.
 
         Parameters
         ----------
@@ -207,10 +207,25 @@ class Sdf:
             are in axis order and specify the gradients for that axis
             at each point.
         """
-        self.gradients_ = self.comp_gradients(self.data_)
+        self.gradients_ = self.compute_gradients(self.data_)
 
-    def interpolate(self, x, y, z, sdf):
-        # trilinear interpolation
+    @staticmethod
+    def interpolate(x, y, z, sdf):
+        """
+        Returns the trilinearly interpolated value between the discrete points of the sdf (credits to Alexander Komar).
+
+        Parameters
+        ---------
+        x : x-coordinate of the point
+        y : y-coordinate of the point
+        z : z-coordinate of the point
+        sdf : numpy matrix size * size * size of distance values
+
+        Returns
+        -------
+        Interpolated value between points
+        """
+        # Trilinear interpolation
         dx = x - math.floor(x)
         dy = y - math.floor(y)
         dz = z - math.floor(z)
@@ -236,13 +251,24 @@ class Sdf:
 
         return dzz * (1 - dz) + dz1 * dz
 
-    def comp_gradients(self, sdf):
+    def compute_gradients(self, sdf):
+        """
+        Returns the approximated gradient for each point in the sdf (credits to Alexander Komar).
+
+        Parameters
+        ----------
+        sdf : numpy matrix size * size * size of distance values
+
+        Returns
+        -------
+        gradient : numpy matrix 3 * size * size * size that holds gradient for each point in sdf
+        """
         gradient = np.zeros((3, sdf.shape[0], sdf.shape[1], sdf.shape[2]))
         size = sdf.shape[0]
         for z in range(size - 1):
             for y in range(size - 1):
                 for x in range(size - 1):
-                    # calc gradient
+                    # Calculate gradient
                     if x > 0:
                         gradient[0, z, y, x] = (self.interpolate(x + self.epsilon, y, z, sdf) -
                                                 self.interpolate(x - self.epsilon, y, z, sdf)) / (2 * self.epsilon)
@@ -291,7 +317,7 @@ class Sdf3D(Sdf):
         spts, _ = self.surface_points()
         self.center_ = 0.5 * (np.min(spts, axis=0) + np.max(spts, axis=0))
         self.points_buf_ = np.zeros([Sdf3D.num_interpolants, 3], dtype=int)
-        self.coords_buf_ = np.zeros([3,])
+        self.coords_buf_ = np.zeros([3, ])
         self.pts_ = None
 
         # tranform sdf basis to grid (X and Z axes are flipped!)
@@ -638,7 +664,7 @@ class Sdf3D(Sdf):
         delta_T : SimilarityTransform
             the transformation from the current frame of reference to the new frame of reference
         detailed : bool
-            whether or not to use interpolation
+            whether to use interpolation
 
         Returns
         -------
@@ -679,7 +705,7 @@ class Sdf3D(Sdf):
         else:
             pts_tf_round = np.round(pts_tf).astype(np.int64)
 
-            # snap to closest boundary
+            # snap to the closest boundary
             pts_tf_round[:, 0] = np.max(np.c_[np.zeros([num_pts, 1]), pts_tf_round[:, 0]], axis=1)
             pts_tf_round[:, 0] = np.min(np.c_[(self.dims_[0] - 1) * np.ones([num_pts, 1]), pts_tf_round[:, 0]], axis=1)
 
