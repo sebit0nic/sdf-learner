@@ -32,6 +32,7 @@ if __name__ == "__main__":
     parser.add_argument('-co', '--compute_one', help='Compute points of high curvature for one given bin file.')
     parser.add_argument('-ca', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
+    parser.add_argument('-rc', '--read_curvature', help='Read points of high curvature for one given bin file.')
     parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-vo', '--visualize_obj', help='Visualize obj file.')
     parser.add_argument('-t', '--train', help='Train the neural network using some predefined model.')
@@ -59,6 +60,10 @@ if __name__ == "__main__":
     sample_file_prefix = 'sample'
     sample_file_postfix = '_subdiv'
     sample_file_extension = '.bin'
+    curvature_folder = 'curvature/'
+    curvature_file_prefix = 'sample'
+    curvature_file_postfix = '_subdiv'
+    curvature_file_extension = '.bin'
 
     print('=> Parameters:')
     print('   Generate one: ' + str(args.generate_one))
@@ -131,6 +136,16 @@ if __name__ == "__main__":
             points_of_interest = sdf_curvature.classify_points(sorted_samples, False)
             sdf_writer = SDFWriter(o_path)
             sdf_writer.write_points(points_of_interest, False)
+
+    if args.read_curvature is not None:
+        i_path = (f'{curvature_folder}{curvature_file_prefix}{str(args.read_curvature).zfill(6)}'
+                  f'{curvature_file_postfix}{curvature_file_extension}')
+        file = open(i_path)
+        data = np.fromfile(file)
+        curvature_data = np.reshape(data, (data.shape[0] // 4, 4))
+        sorted_curvature = curvature_data[curvature_data[:, 3].argsort()[::-1]]
+        np.set_printoptions(suppress=True)
+        print(sorted_curvature)
 
     # Visualize SDF or ground truth as 3D point cloud
     if args.visualize is not None:

@@ -7,5 +7,6 @@ out_v1/
 out_v2/
 pred/
 samples/
+curvature/
 .idea/
 __pycache__/
