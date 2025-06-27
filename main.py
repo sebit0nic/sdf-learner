@@ -140,12 +140,22 @@ if __name__ == "__main__":
     if args.read_curvature is not None:
         i_path = (f'{curvature_folder}{curvature_file_prefix}{str(args.read_curvature).zfill(6)}'
                   f'{curvature_file_postfix}{curvature_file_extension}')
+        if args.visualize_obj is not None:
+            i_obj_path = f'{in_folder}{sample_file_prefix}{str(args.visualize_obj).zfill(6)}{sample_file_postfix}.obj'
+        else:
+            i_obj_path = ''
         file = open(i_path)
         data = np.fromfile(file)
         curvature_data = np.reshape(data, (data.shape[0] // 4, 4))
+        # TODO: consider also negative values (abs)
         sorted_curvature = curvature_data[curvature_data[:, 3].argsort()[::-1]]
-        np.set_printoptions(suppress=True)
-        print(sorted_curvature)
+        num_curvatures = round(np.shape(sorted_curvature)[0] * (percentage / 100))
+        points_of_interest = np.zeros((sample_dim, sample_dim, sample_dim), dtype=np.int32)
+        for i in range(num_curvatures):
+            vert = sorted_curvature[i]
+            points_of_interest[round(vert[0]), round(vert[1]), round(vert[2])] = 1
+        sdf_visualizer = SDFVisualizer(point_size)
+        sdf_visualizer.plot_points(points_of_interest, np.zeros(0), i_obj_path)
 
     # Visualize SDF or ground truth as 3D point cloud
     if args.visualize is not None:
