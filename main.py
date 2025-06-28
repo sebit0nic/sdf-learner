@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     point_size = 10
     epsilon = 0.01
-    percentage = 20
+    percentage = 25
     resolution = 0.5
     start_sample_num = 0
     sample_num = 1000
@@ -70,6 +70,7 @@ if __name__ == "__main__":
     print('   Generate all: ' + str(args.generate_all == 'Set'))
     print('   Compute one:  ' + str(args.compute_one))
     print('   Compute all:  ' + str(args.compute_all == 'Set'))
+    print('   Read curve:   ' + str(args.read_curvature))
     print('   Visualize:    ' + str(args.visualize))
     print('   Train:        ' + str(args.train))
     print('   Grid search:  ' + str(args.grid_search == 'Set'))
@@ -147,7 +148,9 @@ if __name__ == "__main__":
         file = open(i_path)
         data = np.fromfile(file)
         curvature_data = np.reshape(data, (data.shape[0] // 4, 4))
-        # TODO: consider also negative values (abs)
+        for i in range(curvature_data.shape[0]):
+            if curvature_data[i, 3] < 0:
+                curvature_data[i, 3] = -curvature_data[i, 3]
         sorted_curvature = curvature_data[curvature_data[:, 3].argsort()[::-1]]
         num_curvatures = round(np.shape(sorted_curvature)[0] * (percentage / 100))
         points_of_interest = np.zeros((sample_dim, sample_dim, sample_dim), dtype=np.int32)
