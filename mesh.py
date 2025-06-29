@@ -35,6 +35,7 @@ if __name__ == "__main__":
         o_path = (f'{curvature_folder}{curvature_file_prefix}{str(args.compute_one).zfill(6)}'
                   f'{curvature_file_postfix}{curvature_file_extension}')
         mesh = pymesh.quad_to_tri(pymesh.load_mesh(i_path))
+        # TODO: add column for absolute value of curvature
         mesh.add_attribute("vertex_gaussian_curvature")
         curvature = mesh.get_attribute("vertex_gaussian_curvature")
         curvature_data = np.hstack((mesh.vertices, np.reshape(curvature, (mesh.num_nodes, 1))))
