@@ -152,18 +152,14 @@ if __name__ == "__main__":
         # Read in vertex coordinates and corresponding curvature from file (see mesh.py for generation)
         file = open(i_c_path)
         data = np.fromfile(file)
-        curvature_data = np.reshape(data, (data.shape[0] // 4, 4))
-        curvature_data = np.hstack((curvature_data, np.zeros((data.shape[0] // 4, 1))))
+        curvature_data = np.reshape(data, (data.shape[0] // 5, 5))
+        curvature_data = np.hstack((curvature_data, np.zeros((data.shape[0] // 5, 1))))
         file.close()
         file = open(i_d_path)
         distances = np.fromfile(file, dtype=np.float32).reshape((sample_dim, sample_dim, sample_dim))
         file.close()
 
-        # Take absolute and sort curvatures of vertices in descending order to later iterate over them
-        # TODO: do this already in mesh.py
-        for c in curvature_data:
-            c[4] = c[3]
-            c[3] = abs(c[3])
+        # Sort curvatures of vertices based on absolute value in descending order to later iterate over them
         sorted_curvature = curvature_data[curvature_data[:, 3].argsort()[::-1]]
 
         # Classify a certain percentage of vertices of the mesh as high curvature points in the SDF
@@ -200,6 +196,7 @@ if __name__ == "__main__":
             # Classify corresponding point in SDF as high curvature point
             points_of_interest[cur_z, cur_y, cur_x] = 1
             curvatures[cur_z, cur_y, cur_x] = sorted_curvature[i][4]
+        # TODO: save to out folder
         sdf_visualizer = SDFVisualizer(point_size)
         sdf_visualizer.plot_points(points_of_interest, curvatures, i_obj_path)
 
