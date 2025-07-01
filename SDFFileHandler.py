@@ -42,6 +42,18 @@ class SDFReader:
         file.close()
         return points
 
+    def read_curvatures_from_mesh(self, num_fields, debug=True):
+        """Read in vertex coordinates and corresponding curvature from file (see mesh.py for generation)"""
+        if debug:
+            print('=> Reading in curvatures from mesh file...')
+            print('')
+        file = open(self.file_name)
+        data = np.fromfile(file)
+        curvature_data = np.reshape(data, (data.shape[0] // num_fields, num_fields))
+        curvature_data = np.hstack((curvature_data, np.zeros((data.shape[0] // num_fields, 1))))
+        file.close()
+        return curvature_data
+
     def read_dataset_from_bin(self, device, sample_num, is_label, debug=True):
         """Deprecated"""
         # Initialize array by using first available sample.

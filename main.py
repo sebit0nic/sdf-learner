@@ -11,7 +11,6 @@ import time
 import itertools
 import trimesh
 import mesh_to_sdf
-import math
 
 from SDFFileHandler import SDFReader
 from SDFFileHandler import SDFWriter
@@ -34,6 +33,8 @@ if __name__ == "__main__":
     parser.add_argument('-ca', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all SDF files inside folder.')
     parser.add_argument('-rc', '--read_curvature', help='Read points of high curvature for one given bin file.')
+    parser.add_argument('-ra', '--read_curvature_all', action='store', const='Set', nargs='?',
+                        help='Read points of high curvature for one given bin file.')
     parser.add_argument('-v', '--visualize', help='Visualize points of high curvature for one given bin or csv file.')
     parser.add_argument('-vo', '--visualize_obj', help='Visualize obj file.')
     parser.add_argument('-t', '--train', help='Train the neural network using some predefined model.')
@@ -49,6 +50,7 @@ if __name__ == "__main__":
     start_sample_num = 0
     sample_num = 1000
     sample_dim = 64
+    curvature_field_num = 5
     in_folder = 'in/'
     in_file_prefix = 'sample'
     in_file_postfix = '_subdiv'
@@ -72,6 +74,7 @@ if __name__ == "__main__":
     print('   Compute one:  ' + str(args.compute_one))
     print('   Compute all:  ' + str(args.compute_all == 'Set'))
     print('   Read curve:   ' + str(args.read_curvature))
+    print('   Read all:     ' + str(args.read_curvature_all == 'Set'))
     print('   Visualize:    ' + str(args.visualize))
     print('   Train:        ' + str(args.train))
     print('   Grid search:  ' + str(args.grid_search == 'Set'))
@@ -139,66 +142,39 @@ if __name__ == "__main__":
             sdf_writer = SDFWriter(o_path)
             sdf_writer.write_points(points_of_interest, False)
 
+    # Read ground truth out of one curvature file
     if args.read_curvature is not None:
         i_c_path = (f'{curvature_folder}{curvature_file_prefix}{str(args.read_curvature).zfill(6)}'
                     f'{curvature_file_postfix}{curvature_file_extension}')
         i_d_path = (f'{in_folder}{sample_file_prefix}{str(args.read_curvature).zfill(6)}{sample_file_postfix}'
                     f'{sample_file_extension}')
-        if args.visualize_obj is not None:
-            i_obj_path = f'{in_folder}{sample_file_prefix}{str(args.visualize_obj).zfill(6)}{sample_file_postfix}.obj'
-        else:
-            i_obj_path = ''
+        o_path = (f'{out_folder}{out_file_prefix}{str(args.read_curvature).zfill(6)}{out_file_postfix}'
+                  f'{out_file_extension}')
+        curvature_reader = SDFReader(i_c_path)
+        curvature_data = curvature_reader.read_curvatures_from_mesh(curvature_field_num)
+        distance_reader = SDFReader(i_d_path)
+        distances = distance_reader.read_points_from_bin(False)
+        sdf_curvature = SDFCurvature(epsilon, percentage, sample_dim)
+        points_of_interest, _ = sdf_curvature.classify_points_from_mesh(curvature_data, distances)
+        sdf_writer = SDFWriter(o_path)
+        sdf_writer.write_points(points_of_interest)
 
-        # Read in vertex coordinates and corresponding curvature from file (see mesh.py for generation)
-        file = open(i_c_path)
-        data = np.fromfile(file)
-        curvature_data = np.reshape(data, (data.shape[0] // 5, 5))
-        curvature_data = np.hstack((curvature_data, np.zeros((data.shape[0] // 5, 1))))
-        file.close()
-        file = open(i_d_path)
-        distances = np.fromfile(file, dtype=np.float32).reshape((sample_dim, sample_dim, sample_dim))
-        file.close()
-
-        # Sort curvatures of vertices based on absolute value in descending order to later iterate over them
-        sorted_curvature = curvature_data[curvature_data[:, 3].argsort()[::-1]]
-
-        # Classify a certain percentage of vertices of the mesh as high curvature points in the SDF
-        num_curvatures = round(np.shape(sorted_curvature)[0] * (percentage / 100))
-        points_of_interest = np.zeros((sample_dim, sample_dim, sample_dim), dtype=np.int32)
-        curvatures = np.zeros((sample_dim, sample_dim, sample_dim))
-        for i in range(num_curvatures):
-            v = sorted_curvature[i]
-
-            # Get coordinates of neighbouring points in SDF based on mesh vertex coordinate
-            f0 = math.floor(v[0])
-            c0 = math.ceil(v[0])
-            f1 = math.floor(v[1])
-            c1 = math.ceil(v[1])
-            f2 = math.floor(v[2])
-            c2 = math.ceil(v[2])
-            cur_dist = math.inf
-            cur_z = 0
-            cur_y = 0
-            cur_x = 0
-            loc_array = [[f0, f1, f2], [f0, f1, c2], [f0, c1, f2], [f0, c1, c2], [c0, f1, f2], [c0, f1, c2],
-                         [c0, c1, f2], [c0, c1, c2]]
-            dist_array = [distances[f0, f1, f2], distances[f0, f1, c2], distances[f0, c1, f2], distances[f0, c1, c2],
-                          distances[c0, f1, f2], distances[c0, f1, c2], distances[c0, c1, f2], distances[c0, c1, c2]]
-
-            # Find neighbouring SDF point with the smallest distance to surface to place point as close as possible
-            for k in range(len(loc_array)):
-                if abs(dist_array[k]) < cur_dist:
-                    cur_dist = abs(dist_array[k])
-                    cur_z = loc_array[k][0]
-                    cur_y = loc_array[k][1]
-                    cur_x = loc_array[k][2]
-
-            # Classify corresponding point in SDF as high curvature point
-            points_of_interest[cur_z, cur_y, cur_x] = 1
-            curvatures[cur_z, cur_y, cur_x] = sorted_curvature[i][4]
-        # TODO: save to out folder
-        sdf_visualizer = SDFVisualizer(point_size)
-        sdf_visualizer.plot_points(points_of_interest, curvatures, i_obj_path)
+    # Read ground truth out of multiple curvature files
+    if args.read_curvature_all is not None:
+        for i in range(start_sample_num, sample_num):
+            print(f'=> Computing sample {i + 1}')
+            i_c_path = (f'{curvature_folder}{curvature_file_prefix}{str(i).zfill(6)}{curvature_file_postfix}'
+                        f'{curvature_file_extension}')
+            i_d_path = f'{in_folder}{sample_file_prefix}{str(i).zfill(6)}{sample_file_postfix}{sample_file_extension}'
+            o_path = f'{out_folder}{out_file_prefix}{str(i).zfill(6)}{out_file_postfix}{out_file_extension}'
+            curvature_reader = SDFReader(i_c_path)
+            curvature_data = curvature_reader.read_curvatures_from_mesh(curvature_field_num, False)
+            distance_reader = SDFReader(i_d_path)
+            distances = distance_reader.read_points_from_bin(False, False)
+            sdf_curvature = SDFCurvature(epsilon, percentage, sample_dim)
+            points_of_interest, _ = sdf_curvature.classify_points_from_mesh(curvature_data, distances, False)
+            sdf_writer = SDFWriter(o_path)
+            sdf_writer.write_points(points_of_interest, False)
 
     # Visualize SDF or ground truth as 3D point cloud
     if args.visualize is not None:
@@ -210,14 +186,23 @@ if __name__ == "__main__":
         sdf_reader = SDFReader(i_path)
         sdf_visualizer = SDFVisualizer(point_size)
         folder = i_path.split('/')[0]
-        if folder == 'in' or folder == 'in_v1' or folder == 'in_v2' or folder == 'samples':
+        if folder == 'in':
             points = sdf_reader.read_points_from_bin(False)
             sdf = Sdf3D(points, np.array((sample_dim / 2, sample_dim / 2, sample_dim / 2)), resolution, epsilon)
             sdf_curvature = SDFCurvature(epsilon, percentage, sdf.dimensions[0])
             curvatures, sorted_samples = sdf_curvature.calculate_curvature(sdf)
             points_of_interest = sdf_curvature.classify_points(sorted_samples)
             sdf_visualizer.plot_points(points_of_interest, curvatures, i_obj_path)
-        elif folder == 'out' or folder == 'out_v1' or folder == 'out_v2' or folder == 'pred':
+        elif folder == 'curvature':
+            i_d_path = f"{in_folder}{i_path.split('/')[1]}"
+            curvature_reader = SDFReader(i_path)
+            curvature_data = curvature_reader.read_curvatures_from_mesh(curvature_field_num)
+            distance_reader = SDFReader(i_d_path)
+            distances = distance_reader.read_points_from_bin(False)
+            sdf_curvature = SDFCurvature(epsilon, percentage, sample_dim)
+            points_of_interest, curvatures = sdf_curvature.classify_points_from_mesh(curvature_data, distances)
+            sdf_visualizer.plot_points(points_of_interest, curvatures, i_obj_path)
+        elif folder == 'out' or folder == 'pred':
             points_of_interest = sdf_reader.read_points_from_bin(True)
             sdf_visualizer.plot_points(points_of_interest, np.zeros(0), i_obj_path)
         else:
