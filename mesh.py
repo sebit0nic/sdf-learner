@@ -13,6 +13,7 @@ import argparse
 def compute_curvature_points(in_file, out_file, debug):
     # Load mesh and convert to triangle mesh (pymesh only supports tri-meshes)
     mesh = pymesh.quad_to_tri(pymesh.load_mesh(in_file))
+    # TODO: subdivision to get more vertices?
 
     # Compute gaussian curvature for all vertices
     mesh.add_attribute("vertex_gaussian_curvature")
