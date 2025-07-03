@@ -10,10 +10,17 @@ import numpy as np
 import argparse
 
 
-def compute_curvature_points(in_file, out_file, debug):
+def compute_curvature_points(in_file, out_file, subdivide, debug=True):
     # Load mesh and convert to triangle mesh (pymesh only supports tri-meshes)
     mesh = pymesh.quad_to_tri(pymesh.load_mesh(in_file))
-    # TODO: subdivision to get more vertices?
+    if debug:
+        print(f'Number of vertices: {mesh.num_nodes}')
+
+    # Subdivide mesh such that more vertices can be correlated to SDF points later on
+    if subdivide:
+        mesh = pymesh.subdivide(mesh, order=2, method="loop")
+        if debug:
+            print(f'Number of vertices after subdivision: {mesh.num_nodes}')
 
     # Compute gaussian curvature for all vertices
     mesh.add_attribute("vertex_gaussian_curvature")
@@ -35,6 +42,8 @@ if __name__ == "__main__":
     parser.add_argument('-co', '--compute_one', help='Compute points of high curvature for one given bin file.')
     parser.add_argument('-ca', '--compute_all', action='store', const='Set', nargs='?',
                         help='Compute points of high curvature for all mesh files inside folder.')
+    parser.add_argument('-s', '--subdivide', action='store', const='Set', nargs='?',
+                        help='Subdivide the mesh once before computing the curvature.')
 
     args = parser.parse_args()
 
@@ -49,13 +58,14 @@ if __name__ == "__main__":
     curvature_file_prefix = 'sample'
     curvature_file_postfix = '_subdiv'
     curvature_file_extension = '.bin'
+    subdiv = args.subdivide == 'Set'
 
     # Compute the ground truth out of one mesh in the form [z, y, x, abs_curv, curv]
     if args.compute_one is not None:
         i_path = f'{in_folder}{in_file_prefix}{str(args.compute_one).zfill(6)}{in_file_postfix}{in_file_extension}'
         o_path = (f'{curvature_folder}{curvature_file_prefix}{str(args.compute_one).zfill(6)}'
                   f'{curvature_file_postfix}{curvature_file_extension}')
-        compute_curvature_points(i_path, o_path, True)
+        compute_curvature_points(i_path, o_path, subdiv)
 
     # Compute the ground truths out of multiple meshes in the form [z, y, x, abs_curv, curv]
     if args.compute_all is not None:
@@ -64,4 +74,4 @@ if __name__ == "__main__":
             i_path = f'{in_folder}{in_file_prefix}{str(i).zfill(6)}{in_file_postfix}{in_file_extension}'
             o_path = (f'{curvature_folder}{curvature_file_prefix}{str(i).zfill(6)}{curvature_file_postfix}'
                       f'{curvature_file_extension}')
-            compute_curvature_points(i_path, o_path, False)
+            compute_curvature_points(i_path, o_path, subdiv, False)
