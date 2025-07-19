@@ -1,0 +1,857 @@
+=> Starting training...
+   Learning rate: 0.0001
+   Batch size:    2
+   Loss function: BCEWithLogitsLoss{'training': True, '_parameters': OrderedDict(), '_buffers': OrderedDict([('weight', None), ('pos_weight', tensor([0.1000], device='cuda:0'))]), '_non_persistent_buffers_set': set(), '_backward_pre_hooks': OrderedDict(), '_backward_hooks': OrderedDict(), '_is_full_backward_hook': None, '_forward_hooks': OrderedDict(), '_forward_hooks_with_kwargs': OrderedDict(), '_forward_hooks_always_called': OrderedDict(), '_forward_pre_hooks': OrderedDict(), '_forward_pre_hooks_with_kwargs': OrderedDict(), '_state_dict_hooks': OrderedDict(), '_state_dict_pre_hooks': OrderedDict(), '_load_state_dict_pre_hooks': OrderedDict(), '_load_state_dict_post_hooks': OrderedDict(), '_modules': OrderedDict(), 'reduction': 'mean'}
+==========================================================================================
+Layer (type:depth-idx)                   Output Shape              Param #
+==========================================================================================
+SDFUnetLevel3                            [1, 1, 64, 64, 64]        --
+├─Conv3d: 1-1                            [1, 32, 64, 64, 64]       896
+├─ReLU: 1-2                              [1, 32, 64, 64, 64]       --
+├─Conv3d: 1-3                            [1, 64, 64, 64, 64]       55,360
+├─ReLU: 1-4                              [1, 64, 64, 64, 64]       --
+├─MaxPool3d: 1-5                         [1, 64, 32, 32, 32]       --
+├─Conv3d: 1-6                            [1, 64, 32, 32, 32]       110,656
+├─ReLU: 1-7                              [1, 64, 32, 32, 32]       --
+├─Conv3d: 1-8                            [1, 128, 32, 32, 32]      221,312
+├─ReLU: 1-9                              [1, 128, 32, 32, 32]      --
+├─MaxPool3d: 1-10                        [1, 128, 16, 16, 16]      --
+├─Conv3d: 1-11                           [1, 128, 16, 16, 16]      442,496
+├─ReLU: 1-12                             [1, 128, 16, 16, 16]      --
+├─Conv3d: 1-13                           [1, 256, 16, 16, 16]      884,992
+├─ReLU: 1-14                             [1, 256, 16, 16, 16]      --
+├─MaxPool3d: 1-15                        [1, 256, 8, 8, 8]         --
+├─Conv3d: 1-16                           [1, 256, 8, 8, 8]         1,769,728
+├─ReLU: 1-17                             [1, 256, 8, 8, 8]         --
+├─Conv3d: 1-18                           [1, 512, 8, 8, 8]         3,539,456
+├─ReLU: 1-19                             [1, 512, 8, 8, 8]         --
+├─ConvTranspose3d: 1-20                  [1, 512, 16, 16, 16]      7,078,400
+├─Conv3d: 1-21                           [1, 256, 16, 16, 16]      5,308,672
+├─ReLU: 1-22                             [1, 256, 16, 16, 16]      --
+├─Conv3d: 1-23                           [1, 256, 16, 16, 16]      1,769,728
+├─ReLU: 1-24                             [1, 256, 16, 16, 16]      --
+├─ConvTranspose3d: 1-25                  [1, 256, 32, 32, 32]      1,769,728
+├─Conv3d: 1-26                           [1, 128, 32, 32, 32]      1,327,232
+├─ReLU: 1-27                             [1, 128, 32, 32, 32]      --
+├─Conv3d: 1-28                           [1, 128, 32, 32, 32]      442,496
+├─ReLU: 1-29                             [1, 128, 32, 32, 32]      --
+├─ConvTranspose3d: 1-30                  [1, 128, 64, 64, 64]      442,496
+├─Conv3d: 1-31                           [1, 64, 64, 64, 64]       331,840
+├─ReLU: 1-32                             [1, 64, 64, 64, 64]       --
+├─Conv3d: 1-33                           [1, 64, 64, 64, 64]       110,656
+├─ReLU: 1-34                             [1, 64, 64, 64, 64]       --
+├─Conv3d: 1-35                           [1, 1, 64, 64, 64]        1,729
+==========================================================================================
+Total params: 25,607,873
+Trainable params: 25,607,873
+Non-trainable params: 0
+Total mult-adds (G): 440.20
+==========================================================================================
+Input size (MB): 1.05
+Forward/backward pass size (MB): 974.13
+Params size (MB): 102.43
+Estimated Total Size (MB): 1077.61
+==========================================================================================
+=> Epoch (1)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00035455398028716445
+=> Epoch (2)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00034194221370853484
+=> Epoch (3)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00033626850927248597
+=> Epoch (4)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00033347378484904766
+=> Epoch (5)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003318676899652928
+=> Epoch (6)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00033073240774683654
+=> Epoch (7)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003298264346085489
+=> Epoch (8)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00032891190494410694
+=> Epoch (9)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003280641685705632
+=> Epoch (10)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003272357862442732
+=> Epoch (11)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003264216356910765
+=> Epoch (12)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003255861229263246
+=> Epoch (13)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000324746361002326
+=> Epoch (14)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003238976642023772
+=> Epoch (15)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00032309116795659065
+=> Epoch (16)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003221843217033893
+=> Epoch (17)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00032137372181750834
+=> Epoch (18)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00032039705547504127
+=> Epoch (19)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003194861928932369
+=> Epoch (20)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003185804234817624
+=> Epoch (21)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00031754508381709456
+=> Epoch (22)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003166387905366719
+=> Epoch (23)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003155409067403525
+=> Epoch (24)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003144521324429661
+=> Epoch (25)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00031340852729044855
+=> Epoch (26)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00031234780908562243
+=> Epoch (27)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003112511185463518
+=> Epoch (28)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003102460177615285
+=> Epoch (29)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003093126288149506
+=> Epoch (30)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003081000759266317
+=> Epoch (31)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003071891551371664
+=> Epoch (32)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003060239541810006
+=> Epoch (33)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00030527482158504426
+=> Epoch (34)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00030418415553867817
+=> Epoch (35)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00030315338517539203
+=> Epoch (36)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0003022989258170128
+=> Epoch (37)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00030145031632855535
+=> Epoch (38)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000300577754387632
+=> Epoch (39)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029984445427544415
+=> Epoch (40)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029915448976680636
+=> Epoch (41)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029832375003024936
+=> Epoch (42)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002980932767968625
+=> Epoch (43)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000296679645543918
+=> Epoch (44)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029642233857885003
+=> Epoch (45)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029550708131864667
+=> Epoch (46)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002945669984910637
+=> Epoch (47)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029413364245556295
+=> Epoch (48)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002931561612058431
+=> Epoch (49)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029270342201925814
+=> Epoch (50)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002919956168625504
+=> Epoch (51)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002912816416937858
+=> Epoch (52)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00029039543005637825
+=> Epoch (53)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00028982499497942626
+=> Epoch (54)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000289982563117519
+   => No improvement this epoch (1 in row)
+=> Epoch (55)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00028864521300420165
+=> Epoch (56)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002874441852327436
+=> Epoch (57)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002874564379453659
+   => No improvement this epoch (1 in row)
+=> Epoch (58)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000286162830889225
+=> Epoch (59)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002852855250239372
+=> Epoch (60)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002847827854566276
+=> Epoch (61)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00028381680021993816
+=> Epoch (62)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002830656012520194
+=> Epoch (63)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002823866961989552
+=> Epoch (64)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00028174108592793345
+=> Epoch (65)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00028094532899558544
+=> Epoch (66)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002803108945954591
+=> Epoch (67)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00027955183759331703
+=> Epoch (68)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002788271813187748
+=> Epoch (69)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002783713862299919
+=> Epoch (70)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002774659951683134
+=> Epoch (71)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002774380554910749
+=> Epoch (72)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002759950002655387
+=> Epoch (73)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002753242151811719
+=> Epoch (74)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00027520954608917236
+=> Epoch (75)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002738984185270965
+=> Epoch (76)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002731850545387715
+=> Epoch (77)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00027257666806690395
+=> Epoch (78)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00027202494675293565
+=> Epoch (79)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00027123751351609826
+=> Epoch (80)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002705531078390777
+=> Epoch (81)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002699868055060506
+=> Epoch (82)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00026924844132736325
+=> Epoch (83)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.000269021576968953
+=> Epoch (84)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00026880489895120263
+=> Epoch (85)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002676559379324317
+=> Epoch (86)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002673100389074534
+=> Epoch (87)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002662891347426921
+=> Epoch (88)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002659044985193759
+=> Epoch (89)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.00026512655313126743
+=> Epoch (90)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 25.00% (0.25)
+    - Recall:    0.01% (7.51681873225607e-05)
+    - F1 score:  0.02% (0.00015029119094833732)
+    - mIOU:      0.01% (7.515124161727726e-05)
+    - Loss:      0.0002647227665875107
+=> Epoch (91)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002640339662320912
+=> Epoch (92)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 16.67% (0.1666666716337204)
+    - Recall:    0.00% (3.758409366128035e-05)
+    - F1 score:  0.01% (7.515124161727726e-05)
+    - mIOU:      0.00% (3.7577032344415784e-05)
+    - Loss:      0.00026366859674453735
+=> Epoch (93)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 0.00% (0.0)
+    - Recall:    0.00% (0.0)
+    - F1 score:  0.00% (0.0)
+    - mIOU:      0.00% (0.0)
+    - Loss:      0.0002635474083945155
+=> Epoch (94)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 14.29% (0.1428571492433548)
+    - Recall:    0.00% (3.758409366128035e-05)
+    - F1 score:  0.01% (7.514841854572296e-05)
+    - mIOU:      0.00% (3.757562080863863e-05)
+    - Loss:      0.0002628149522934109
+=> Epoch (95)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 33.33% (0.3333333432674408)
+    - Recall:    0.02% (0.0001503363746451214)
+    - F1 score:  0.03% (0.0003005372127518058)
+    - mIOU:      0.02% (0.00015029119094833732)
+    - Loss:      0.00026194725069217384
+=> Epoch (96)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 30.00% (0.30000001192092896)
+    - Recall:    0.01% (0.00011275228462181985)
+    - F1 score:  0.02% (0.00022541986254509538)
+    - mIOU:      0.01% (0.00011272262781858444)
+    - Loss:      0.0002620846498757601
+   => No improvement this epoch (1 in row)
+=> Epoch (97)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994925856590271)
+    - Precision: 33.33% (0.3333333432674408)
+    - Recall:    0.01% (0.00011275228462181985)
+    - F1 score:  0.02% (0.0002254283317597583)
+    - mIOU:      0.01% (0.0001127268624259159)
+    - Loss:      0.00026150181656703353
+=> Epoch (98)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 46.67% (0.46666666865348816)
+    - Recall:    0.03% (0.0002630886738188565)
+    - F1 score:  0.05% (0.0005258808378130198)
+    - mIOU:      0.03% (0.0002630095696076751)
+    - Loss:      0.0002608194190543145
+=> Epoch (99)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994924068450928)
+    - Precision: 52.94% (0.529411792755127)
+    - Recall:    0.03% (0.00033825685386545956)
+    - F1 score:  0.07% (0.0006760817486792803)
+    - mIOU:      0.03% (0.00033815516508184373)
+    - Loss:      0.00026023125974461436
+=> Epoch (100)
+   => Validation/test set summary:
+    - Accuracy:  99.95% (0.9994925856590271)
+    - Precision: 57.14% (0.5714285969734192)
+    - Recall:    0.05% (0.0004510091384872794)
+    - F1 score:  0.09% (0.0009013068629428744)
+    - mIOU:      0.05% (0.00045085663441568613)
+    - Loss:      0.00025985194952227175

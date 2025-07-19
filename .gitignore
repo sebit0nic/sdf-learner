@@ -1,13 +1,8 @@
 conf/
-in/
-in_v1/
-in_v2/
-out/
-out_v1/
-out_v2/
-out_v3/
+in*/
+out*/
 pred/
 samples/
-curvature/
+curvature*/
 .idea/
 __pycache__/
